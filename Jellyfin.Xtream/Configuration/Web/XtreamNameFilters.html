@@ -1,0 +1,30 @@
+<div id="XtreamNameFiltersPage" data-role="page" class="page type-interior pluginConfigurationPage withTabs"
+  data-require="emby-input,emby-button" data-controller="__plugin/XtreamNameFilters.js">
+  <div data-role="content">
+    <div class="content-primary">
+      <form id="XtreamNameFiltersForm">
+        <div class="sectionTitleContainer">
+          <h2 class="sectionTitle">Name Filters</h2>
+          <div class="fieldDescription">
+            Configure regex patterns to clean channel and group names. Filters are applied in order before tag extraction.
+            Use capture groups ($1, $2, etc.) in replacements to keep parts of the name.
+          </div>
+        </div>
+        <div id="NameFiltersList" class="paperList">
+          <!-- Name filters will be dynamically added here -->
+        </div>
+        <div>
+          <button id="AddFilter" type="button" is="emby-button" class="raised">
+            <span>Add Filter</span>
+          </button>
+        </div>
+        <br/>
+        <div>
+          <button is="emby-button" type="submit" class="raised button-submit block">
+            <span>Save</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

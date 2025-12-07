@@ -127,7 +127,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private ChannelItemInfo CreateChannelItemInfo(Series series)
     {
-        ParsedName parsedName = StreamService.ParseName(series.Name);
+        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(series.Name);
         return new ChannelItemInfo()
         {
             CommunityRating = (float)series.Rating5Based,
@@ -169,7 +169,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
         Season? season = series.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
         if (season != null)
         {
-            ParsedName parsedName = StreamService.ParseName(season.Name);
+            ParsedName parsedName = Plugin.Instance.StreamService.ParseName(season.Name);
             name = parsedName.Title;
             tags.AddRange(parsedName.Tags);
             created = season.AirDate;
@@ -198,7 +198,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
     private ChannelItemInfo CreateChannelItemInfo(SeriesStreamInfo series, Season? season, Episode episode)
     {
         Client.Models.SeriesInfo serie = series.Info;
-        ParsedName parsedName = StreamService.ParseName(episode.Title);
+        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(episode.Title);
         List<MediaSourceInfo> sources =
         [
             Plugin.Instance.StreamService.GetMediaSourceInfo(
@@ -237,7 +237,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
     {
         IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
         List<ChannelItemInfo> items = new(
-            categories.Select((Category category) => StreamService.CreateChannelItemInfo(StreamService.SeriesCategoryPrefix, category)));
+            categories.Select((Category category) => Plugin.Instance.StreamService.CreateChannelItemInfo(StreamService.SeriesCategoryPrefix, category)));
         return new()
         {
             Items = items,

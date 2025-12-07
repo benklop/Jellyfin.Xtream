@@ -88,5 +88,10 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the channel override configuration for Live TV.
     /// </summary>
     public SerializableDictionary<int, ChannelOverrides> LiveTvOverrides { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the list of name filters for cleaning channel and group names.
+    /// </summary>
+    public IList<NameFilter> NameFilters { get; set; } = [];
 }
 #pragma warning restore CA2227

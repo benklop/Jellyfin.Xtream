@@ -117,7 +117,7 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
     private Task<ChannelItemInfo> CreateChannelItemInfo(StreamInfo stream)
     {
         long added = long.Parse(stream.Added, CultureInfo.InvariantCulture);
-        ParsedName parsedName = StreamService.ParseName(stream.Name);
+        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(stream.Name);
 
         List<MediaSourceInfo> sources =
         [
@@ -149,7 +149,7 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
     {
         IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetVodCategories(cancellationToken).ConfigureAwait(false);
         List<ChannelItemInfo> items = new List<ChannelItemInfo>(
-            categories.Select((Category category) => StreamService.CreateChannelItemInfo(StreamService.VodCategoryPrefix, category)));
+            categories.Select((Category category) => Plugin.Instance.StreamService.CreateChannelItemInfo(StreamService.VodCategoryPrefix, category)));
         return new()
         {
             Items = items,

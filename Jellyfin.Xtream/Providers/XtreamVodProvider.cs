@@ -87,7 +87,7 @@ public class XtreamVodProvider(ILogger<VodChannel> logger, IProviderManager prov
                     {
                         SearchInfo = new()
                         {
-                            Name = StreamService.ParseName(vod.MovieData?.Name ?? string.Empty).Title,
+                            Name = Plugin.Instance.StreamService.ParseName(vod.MovieData?.Name ?? string.Empty).Title,
                             Year = item.PremiereDate?.Year,
                         },
                         SearchProviderName = "TheMovieDb",

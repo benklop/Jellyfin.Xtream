@@ -13,6 +13,7 @@ A Jellyfin plugin that integrates Xtream-compatible IPTV APIs, providing Live TV
 - **Channel Implementations**: `VodChannel`, `SeriesChannel`, `CatchupChannel` implement `IChannel` for media browsing
 - **XtreamClient** (`Client/XtreamClient.cs`): HTTP client wrapper for Xtream API communication
 - **StreamService** (`Service/StreamService.cs`): Core business logic for stream management and GUID generation
+- **NameFilterService** (`Service/NameFilterService.cs`): Applies regex-based name filters to clean channel and group names
 - **XtreamVodProvider** (`Providers/XtreamVodProvider.cs`): Metadata provider with TMDB integration
 
 ### Dependency Injection
@@ -33,6 +34,7 @@ All Jellyfin item IDs are generated via `StreamService.ToGuid(prefix, id1, id2, 
 - Empty `HashSet` means "all items in category"
 - `DataVersion` property (assembly version + config hash) triggers cache invalidation on updates
 - `Credentials` list supports multiple login accounts for load balancing across connections
+- `NameFilters` list contains ordered regex patterns for cleaning channel/group names
 
 ## Key Patterns
 
@@ -43,11 +45,17 @@ Custom converters in `Client/` handle malformed Xtream API responses:
 - **OnlyObjectConverter**, **Base64Converter**: Handle edge cases in API responses
 - **Nullable Error Handling**: `XtreamClient.NullableEventHandler()` silently ignores errors for nullable properties
 
-### Tag Parsing
-`StreamService.ParseName()` extracts tags from stream names:
-- Regex pattern: `[TAG]` or `|TAG|` format
-- Also handles Unicode Block Elements (\u2580-\u259F) as tag separators
-- Returns `ParsedName` with cleaned title and extracted tags array
+### Tag Parsing and Name Filtering
+`StreamService.ParseName()` cleans and parses stream names:
+- **Name Filters**: Applied first via `NameFilterService.ApplyFilters()` using configured regex patterns
+  - Filters processed in order defined by `Order` property
+  - Supports capture groups ($1, $2, etc.) for selective preservation
+  - Only enabled filters are applied
+  - 1-second timeout per regex to prevent runaway patterns
+- **Tag Extraction**: After filtering, extracts tags from cleaned names
+  - Regex pattern: `[TAG]` or `|TAG|` format
+  - Also handles Unicode Block Elements (\u2580-\u259F) as tag separators
+  - Returns `ParsedName` with cleaned title and extracted tags array
 
 ### Credential Exposure Caveat
 Xtream URLs include credentials in path. Plugin exposes these via Jellyfin API - document security implications in user-facing changes.
@@ -63,6 +71,14 @@ Xtream URLs include credentials in path. Plugin exposes these via Jellyfin API -
 - Falls back to legacy single username/password for backward compatibility
 - Each `Plugin.Instance.Creds` call returns next available credential
 - Track usage statistics via `GetStatistics()` method
+
+### Name Filter System
+`NameFilterService` applies ordered regex patterns to clean channel and group names:
+- Filters stored in `PluginConfiguration.NameFilters` as `IList<NameFilter>`
+- Each filter has: `Pattern` (regex), `Replacement` (with $1, $2 groups), `Description`, `IsEnabled`, `Order`
+- Applied before tag extraction in `StreamService.ParseName()`
+- UI in `XtreamNameFilters.html` allows adding/editing/reordering filters
+- Example use case: Remove country prefixes like "UK - Channel Name" → "Channel Name" with pattern `^UK\s*-\s*(.*)` and replacement `$1`
 
 ## Build & Development
 

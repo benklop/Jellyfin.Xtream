@@ -58,7 +58,7 @@ public class LiveTvService(IServerApplicationHost appHost, IHttpClientFactory ht
         List<ChannelInfo> items = [];
         foreach (StreamInfo channel in await plugin.StreamService.GetLiveStreamsWithOverrides(cancellationToken).ConfigureAwait(false))
         {
-            ParsedName parsed = StreamService.ParseName(channel.Name);
+            ParsedName parsed = plugin.StreamService.ParseName(channel.Name);
             items.Add(new ChannelInfo()
             {
                 Id = StreamService.ToGuid(StreamService.LiveTvPrefix, channel.StreamId, 0, 0).ToString(),

@@ -34,7 +34,8 @@ namespace Jellyfin.Xtream.Service;
 /// A service for dealing with stream information.
 /// </summary>
 /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
-public partial class StreamService(IXtreamClient xtreamClient)
+/// <param name="nameFilterService">Instance of the <see cref="NameFilterService"/> class.</param>
+public partial class StreamService(IXtreamClient xtreamClient, NameFilterService nameFilterService)
 {
     /// <summary>
     /// The id prefix for VOD category channel items.
@@ -102,14 +103,19 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// </list>
     /// These tags are parsed and returned as separate strings.
     /// The returned title is cleaned from tags and trimmed.
+    /// Name filters from configuration are applied before tag parsing.
     /// </summary>
     /// <param name="name">The name which should be parsed.</param>
     /// <returns>A <see cref="ParsedName"/> struct containing the cleaned title and parsed tags.</returns>
-    public static ParsedName ParseName(string name)
+    public ParsedName ParseName(string name)
     {
+        // Apply name filters first
+        var config = Plugin.Instance.Configuration;
+        string filteredName = nameFilterService.ApplyFilters(name, config.NameFilters);
+
         List<string> tags = [];
         string title = _tagRegex.Replace(
-            name,
+            filteredName,
             (match) =>
             {
                 for (int i = 1; i < match.Groups.Count; ++i)
@@ -189,7 +195,7 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <param name="prefix">The channel category prefix.</param>
     /// <param name="category">The Xtream category.</param>
     /// <returns>A channel item representing the category.</returns>
-    public static ChannelItemInfo CreateChannelItemInfo(int prefix, Category category)
+    public ChannelItemInfo CreateChannelItemInfo(int prefix, Category category)
     {
         ParsedName parsedName = ParseName(category.CategoryName);
         return new ChannelItemInfo()
