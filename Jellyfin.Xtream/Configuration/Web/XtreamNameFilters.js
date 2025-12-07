@@ -1,5 +1,13 @@
 export default function (view) {
   view.addEventListener('viewshow', async () => {
+    const Xtream = await import(
+      ApiClient.getUrl('web/ConfigurationPage', {
+        name: 'Xtream.js',
+      })
+    ).then((module) => module.default);
+
+    Xtream.setTabs(3);
+
     const config = await ApiClient.getPluginConfiguration('5c534e89-6f96-4ddb-9c94-00c7b86d6709');
     const form = view.querySelector('#XtreamNameFiltersForm');
     const filtersList = view.querySelector('#NameFiltersList');

@@ -202,6 +202,10 @@ const tabs = [
     name: 'TV overrides'
   },
   {
+    href: tab('XtreamNameFilters'),
+    name: 'Name Filters'
+  },
+  {
     href: tab('XtreamVod'),
     name: 'Video On-Demand',
   },

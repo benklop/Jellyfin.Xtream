@@ -26,7 +26,7 @@ export default function (view) {
     })
   ).then((Xtream) => Xtream.default
   ).then((Xtream) => {
-    Xtream.setTabs(4);
+    Xtream.setTabs(5);
 
     // Only populate if not already populated
     const populatePromise = isPopulated ? Promise.resolve(currentData) : populate(Xtream);
