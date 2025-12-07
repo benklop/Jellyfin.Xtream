@@ -65,8 +65,10 @@ export default function (view) {
       }
       Dashboard.hideLoadingMsg();
 
-      view.querySelector('#XtreamLiveOverridesForm').addEventListener('submit', (e) => {
-        Dashboard.showLoadingMsg();
+      const form = view.querySelector('#XtreamLiveOverridesForm');
+      if (!form.dataset.listenerAttached) {
+        form.addEventListener('submit', (e) => {
+          Dashboard.showLoadingMsg();
 
         ApiClient.getPluginConfiguration(pluginId).then((config) => {
           config.LiveTvOverrides = Xtream.filter(
@@ -81,6 +83,8 @@ export default function (view) {
         e.preventDefault();
         return false;
       });
+      form.dataset.listenerAttached = 'true';
+    }
     });
   }));
 }

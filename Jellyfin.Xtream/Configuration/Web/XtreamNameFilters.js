@@ -1,6 +1,4 @@
 export default function (view) {
-  let isInitialized = false;
-
   view.addEventListener('viewshow', async () => {
     const Xtream = await import(
       ApiClient.getUrl('web/ConfigurationPage', {
