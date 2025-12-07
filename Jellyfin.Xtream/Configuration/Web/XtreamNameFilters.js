@@ -10,6 +10,7 @@ export default function (view) {
 
     Xtream.setTabs(3);
 
+    const pluginId = Xtream.pluginConfig.UniqueId;
     const form = view.querySelector('#XtreamNameFiltersForm');
     const filtersList = view.querySelector('#NameFiltersList');
 
@@ -83,7 +84,7 @@ export default function (view) {
     }
 
     async function loadFilters() {
-      const config = await ApiClient.getPluginConfiguration('5c534e89-6f96-4ddb-9c94-00c7b86d6709');
+      const config = await ApiClient.getPluginConfiguration(pluginId);
       filtersList.innerHTML = '';
       const filters = config.NameFilters || [];
       filters.forEach((filter, index) => {
@@ -135,22 +136,22 @@ export default function (view) {
             });
           });
 
-          const currentConfig = await ApiClient.getPluginConfiguration('5c534e89-6f96-4ddb-9c94-00c7b86d6709');
+          const currentConfig = await ApiClient.getPluginConfiguration(pluginId);
           currentConfig.NameFilters = filters;
 
-          await ApiClient.updatePluginConfiguration('5c534e89-6f96-4ddb-9c94-00c7b86d6709', currentConfig);
-          Dashboard.processPluginConfigurationUpdateResult();
+          const result = await ApiClient.updatePluginConfiguration(pluginId, currentConfig);
+          Dashboard.hideLoadingMsg();
+          Dashboard.processPluginConfigurationUpdateResult(result);
         } catch (error) {
           Dashboard.hideLoadingMsg();
-          Dashboard.alert(error.message || 'Failed to save filters');
+          console.error('Failed to save name filters:', error);
+          Dashboard.alert((error && error.message) ? error.message : 'Failed to save filters. Check browser console for details.');
         }
       });
 
       isInitialized = true;
-    }
-
-    // Only load filters on first initialization
-    if (!isInitialized) {
+      
+      // Load filters after setting up event listeners
       await loadFilters();
     }
   });
