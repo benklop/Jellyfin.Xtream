@@ -1,37 +1,66 @@
 export default function (view) {
+  let isPopulated = false;
+  let currentData = null;
+
+  const populate = (Xtream) => {
+    const pluginId = Xtream.pluginConfig.UniqueId;
+    const getConfig = ApiClient.getPluginConfiguration(pluginId);
+    const visible = view.querySelector("#Visible");
+    getConfig.then((config) => visible.checked = config.IsSeriesVisible);
+    const table = view.querySelector('#SeriesContent');
+    return Xtream.populateCategoriesTable(
+      table,
+      () => getConfig.then((config) => config.Series),
+      () => Xtream.fetchJson('Xtream/SeriesCategories'),
+      (categoryId) => Xtream.fetchJson(`Xtream/SeriesCategories/${categoryId}`),
+    ).then((data) => {
+      currentData = data;
+      isPopulated = true;
+      return data;
+    });
+  };
+
   view.addEventListener("viewshow", () => import(
     ApiClient.getUrl("web/ConfigurationPage", {
       name: "Xtream.js",
     })
   ).then((Xtream) => Xtream.default
   ).then((Xtream) => {
-    const pluginId = Xtream.pluginConfig.UniqueId;
     Xtream.setTabs(4);
 
-    const getConfig = ApiClient.getPluginConfiguration(pluginId);
-    const visible = view.querySelector("#Visible");
-    getConfig.then((config) => visible.checked = config.IsSeriesVisible);
-    const table = view.querySelector('#SeriesContent');
-    Xtream.populateCategoriesTable(
-      table,
-      () => getConfig.then((config) => config.Series),
-      () => Xtream.fetchJson('Xtream/SeriesCategories'),
-      (categoryId) => Xtream.fetchJson(`Xtream/SeriesCategories/${categoryId}`),
-    ).then((data) => {
-      view.querySelector('#XtreamSeriesForm').addEventListener('submit', (e) => {
-        Dashboard.showLoadingMsg();
+    // Only populate if not already populated
+    const populatePromise = isPopulated ? Promise.resolve(currentData) : populate(Xtream);
 
-        ApiClient.getPluginConfiguration(pluginId).then((config) => {
-          config.IsSeriesVisible = visible.checked;
-          config.Series = data;
-          ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
-            Dashboard.processPluginConfigurationUpdateResult(result);
-          });
+    populatePromise.then((data) => {
+      // Set up refresh button
+      const refreshBtn = view.querySelector('#RefreshCategories');
+      refreshBtn.onclick = () => {
+        populate(Xtream).then((newData) => {
+          currentData = newData;
         });
+      };
 
-        e.preventDefault();
-        return false;
-      });
+      // Set up form submit (only once)
+      const form = view.querySelector('#XtreamSeriesForm');
+      if (!form.dataset.listenerAttached) {
+        form.addEventListener('submit', (e) => {
+          Dashboard.showLoadingMsg();
+          const pluginId = Xtream.pluginConfig.UniqueId;
+          const visible = view.querySelector("#Visible");
+
+          ApiClient.getPluginConfiguration(pluginId).then((config) => {
+            config.IsSeriesVisible = visible.checked;
+            config.Series = currentData;
+            ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
+              Dashboard.processPluginConfigurationUpdateResult(result);
+            });
+          });
+
+          e.preventDefault();
+          return false;
+        });
+        form.dataset.listenerAttached = 'true';
+      }
     });
   }));
 }
