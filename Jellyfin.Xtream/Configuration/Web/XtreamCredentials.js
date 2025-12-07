@@ -6,6 +6,17 @@ export default function (view) {
   ).then((Xtream) => Xtream.default
   ).then((Xtream) => {
     const pluginId = Xtream.pluginConfig.UniqueId;
+    
+    // Set up tab navigation
+    const tabButtons = view.querySelectorAll('.emby-tabs-button button');
+    tabButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const index = parseInt(this.getAttribute('data-index'));
+        Xtream.setTabs(index);
+      });
+    });
+    
+    // Initialize first tab
     Xtream.setTabs(0);
 
     Dashboard.showLoadingMsg();
@@ -14,6 +25,7 @@ export default function (view) {
       view.querySelector('#Username').value = config.Username;
       view.querySelector('#Password').value = config.Password;
       view.querySelector('#UserAgent').value = config.UserAgent;
+      view.querySelector('#CatchupUrlFormat').value = config.CatchupUrlFormat || '{0}/streaming/timeshift.php?username={1}&password={2}&stream={3}&start={4}&duration={5}';
       Dashboard.hideLoadingMsg();
     });
 
@@ -59,8 +71,10 @@ export default function (view) {
         config.Username = view.querySelector('#Username').value;
         config.Password = view.querySelector('#Password').value;
         config.UserAgent = view.querySelector('#UserAgent').value;
+        config.CatchupUrlFormat = view.querySelector('#CatchupUrlFormat').value;
         ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
           reloadStatus();
+          Xtream.logConfigurationChange('Credentials');
           Dashboard.processPluginConfigurationUpdateResult(result);
         });
       });
