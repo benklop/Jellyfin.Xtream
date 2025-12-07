@@ -35,6 +35,7 @@ namespace Jellyfin.Xtream;
 public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     private static Plugin? _instance;
+    private readonly ConnectionPool _connectionPool;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Plugin"/> class.
@@ -43,10 +44,19 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <param name="xmlSerializer">Instance of the <see cref="IXmlSerializer"/> interface.</param>
     /// <param name="taskManager">Instance of the <see cref="ITaskManager"/> interface.</param>
     /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
-    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, ITaskManager taskManager, IXtreamClient xtreamClient)
+    /// <param name="connectionPool">Instance of the <see cref="ConnectionPool"/> class.</param>
+    /// <param name="logger">Instance of the <see cref="ILogger{Plugin}"/> interface.</param>
+    public Plugin(
+        IApplicationPaths applicationPaths,
+        IXmlSerializer xmlSerializer,
+        ITaskManager taskManager,
+        IXtreamClient xtreamClient,
+        ConnectionPool connectionPool,
+        ILogger<Plugin> logger)
         : base(applicationPaths, xmlSerializer)
     {
         _instance = this;
+        _connectionPool = connectionPool;
         XtreamClient = xtreamClient;
         if (XtreamClient is XtreamClient client)
         {
@@ -55,6 +65,8 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
         StreamService = new(xtreamClient);
         TaskService = new(taskManager);
+
+        logger.LogInformation("Plugin initialized with connection pool support");
     }
 
     /// <inheritdoc />
@@ -65,8 +77,13 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     /// <summary>
     /// Gets the Xtream connection info with credentials.
+    /// Uses connection pool for load balancing across multiple credentials.
     /// </summary>
-    public ConnectionInfo Creds => new(Configuration.BaseUrl, Configuration.Username, Configuration.Password);
+    public ConnectionInfo Creds => _connectionPool.GetConnection(
+        Configuration.BaseUrl,
+        Configuration.Username,
+        Configuration.Password,
+        Configuration.Credentials != null ? new List<CredentialInfo>(Configuration.Credentials).AsReadOnly() : []);
 
     /// <summary>
     /// Gets the data version used to trigger a cache invalidation on plugin update or config change.

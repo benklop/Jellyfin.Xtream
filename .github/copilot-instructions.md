@@ -8,6 +8,7 @@ A Jellyfin plugin that integrates Xtream-compatible IPTV APIs, providing Live TV
 
 ### Component Model
 - **Plugin** (`Plugin.cs`): Singleton entry point, exposes `XtreamClient` and `StreamService` instances
+- **ConnectionPool** (`Client/ConnectionPool.cs`): Manages multiple Xtream credentials with round-robin load balancing
 - **LiveTvService**: Implements `ILiveTvService` for EPG and live channel integration
 - **Channel Implementations**: `VodChannel`, `SeriesChannel`, `CatchupChannel` implement `IChannel` for media browsing
 - **XtreamClient** (`Client/XtreamClient.cs`): HTTP client wrapper for Xtream API communication
@@ -31,6 +32,7 @@ All Jellyfin item IDs are generated via `StreamService.ToGuid(prefix, id1, id2, 
 - `LiveTv`, `Vod`, `Series` dictionaries map category IDs to item ID sets
 - Empty `HashSet` means "all items in category"
 - `DataVersion` property (assembly version + config hash) triggers cache invalidation on updates
+- `Credentials` list supports multiple login accounts for load balancing across connections
 
 ## Key Patterns
 
@@ -54,6 +56,13 @@ Xtream URLs include credentials in path. Plugin exposes these via Jellyfin API -
 `PluginConfiguration.LiveTvOverrides` allows per-channel customization:
 - Override channel number, name, logo via `ChannelOverrides` dictionary
 - Applied in `StreamService.GetLiveStreamsWithOverrides()`
+
+### Multi-Credential Load Balancing
+`ConnectionPool` manages multiple Xtream API credentials:
+- Round-robin distribution across enabled credentials
+- Falls back to legacy single username/password for backward compatibility
+- Each `Plugin.Instance.Creds` call returns next available credential
+- Track usage statistics via `GetStatistics()` method
 
 ## Build & Development
 

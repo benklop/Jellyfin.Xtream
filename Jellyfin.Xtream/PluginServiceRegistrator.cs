@@ -31,6 +31,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     /// <inheritdoc />
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
+        serviceCollection.AddSingleton<ConnectionPool>();
         serviceCollection.AddSingleton<IXtreamClient, XtreamClient>();
         serviceCollection.AddSingleton<ILiveTvService, LiveTvService>();
         serviceCollection.AddSingleton<IChannel, CatchupChannel>();
