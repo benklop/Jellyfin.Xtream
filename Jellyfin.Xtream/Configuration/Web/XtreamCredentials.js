@@ -110,8 +110,8 @@ export default function (view) {
       });
     };
 
-    // Only set up event listeners and load config once
-    if (!isInitialized) {
+    const form = view.querySelector('#XtreamCredentialsForm');
+    if (!form.dataset.listenerAttached) {
       loadConfig().then(() => {
         reloadStatus();
       });
@@ -134,48 +134,46 @@ export default function (view) {
         view.querySelector('#UserAgent').value = navigator.userAgent;
       });
 
-      const form = view.querySelector('#XtreamCredentialsForm');
-      if (!form.dataset.listenerAttached) {
-        form.addEventListener('submit', (e) => {
-          Dashboard.showLoadingMsg();
+      form.addEventListener('submit', (e) => {
+        Dashboard.showLoadingMsg();
 
-          ApiClient.getPluginConfiguration(pluginId).then((config) => {
-            config.BaseUrl = view.querySelector('#BaseUrl').value;
-            config.Username = view.querySelector('#Username').value;
-            config.Password = view.querySelector('#Password').value;
-            config.UserAgent = view.querySelector('#UserAgent').value;
+        ApiClient.getPluginConfiguration(pluginId).then((config) => {
+          config.BaseUrl = view.querySelector('#BaseUrl').value;
+          config.Username = view.querySelector('#Username').value;
+          config.Password = view.querySelector('#Password').value;
+          config.UserAgent = view.querySelector('#UserAgent').value;
+          
+          // Collect additional credentials data
+          const credsList = view.querySelector('#AdditionalCredentialsList');
+          config.Credentials = [];
+          
+          credsList.querySelectorAll('.cred-username').forEach((usernameInput, index) => {
+            const passwordInput = credsList.querySelector(`.cred-password[data-index="${index}"]`);
+            const labelInput = credsList.querySelector(`.cred-label[data-index="${index}"]`);
+            const enabledInput = credsList.querySelector(`.cred-enabled[data-index="${index}"]`);
             
-            // Collect additional credentials data
-            const credsList = view.querySelector('#AdditionalCredentialsList');
-            config.Credentials = [];
-            
-            credsList.querySelectorAll('.cred-username').forEach((usernameInput, index) => {
-              const passwordInput = credsList.querySelector(`.cred-password[data-index="${index}"]`);
-              const labelInput = credsList.querySelector(`.cred-label[data-index="${index}"]`);
-              const enabledInput = credsList.querySelector(`.cred-enabled[data-index="${index}"]`);
-              
-              if (usernameInput && passwordInput) {
-                config.Credentials.push({
-                  Username: usernameInput.value,
-                  Password: passwordInput.value,
-                  Label: labelInput ? labelInput.value : '',
-                  IsEnabled: enabledInput ? enabledInput.checked : true
-                });
-              }
-            });
-            
-            ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
-              currentConfig = config;
-              reloadStatus();
-              Dashboard.processPluginConfigurationUpdateResult(result);
-            });
+            if (usernameInput && passwordInput) {
+              config.Credentials.push({
+                Username: usernameInput.value,
+                Password: passwordInput.value,
+                Label: labelInput ? labelInput.value : '',
+                IsEnabled: enabledInput ? enabledInput.checked : true
+              });
+            }
           });
-
-          e.preventDefault();
-          return false;
+          
+          ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
+            currentConfig = config;
+            reloadStatus();
+            Dashboard.processPluginConfigurationUpdateResult(result);
+          });
         });
-        form.dataset.listenerAttached = 'true';
-      }
+
+        e.preventDefault();
+        return false;
+      });
+
+      form.dataset.listenerAttached = 'true';
     }
   }));
 }
