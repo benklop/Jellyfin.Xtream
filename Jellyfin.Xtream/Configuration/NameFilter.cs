@@ -47,4 +47,34 @@ public class NameFilter
     /// Gets or sets the order/priority of this filter (lower numbers run first).
     /// </summary>
     public int Order { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this filter applies to Live TV categories.
+    /// </summary>
+    public bool ApplyToLiveTvCategories { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this filter applies to VOD categories.
+    /// </summary>
+    public bool ApplyToVodCategories { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this filter applies to Series categories.
+    /// </summary>
+    public bool ApplyToSeriesCategories { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this filter applies to Live TV channel names.
+    /// </summary>
+    public bool ApplyToLiveTvItems { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this filter applies to VOD item names.
+    /// </summary>
+    public bool ApplyToVodItems { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this filter applies to Series names.
+    /// </summary>
+    public bool ApplyToSeriesItems { get; set; } = true;
 }

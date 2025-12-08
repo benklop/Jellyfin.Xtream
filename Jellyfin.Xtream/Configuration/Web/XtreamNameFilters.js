@@ -54,6 +54,35 @@ export default function (view) {
           <input type="text" class="filter-replacement" is="emby-input" value="${escapeHtml(filter.Replacement || '')}" placeholder="e.g., $1" />
           <div class="fieldDescription">Replacement text. Use $1, $2, etc. to reference capture groups.</div>
         </div>
+        <div class="inputContainer">
+          <label class="inputLabel inputLabelUnfocused">Apply To</label>
+          <div style="display: flex; gap: 15px; flex-wrap: wrap; padding: 5px 0;">
+            <label style="display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" class="apply-livetv-categories" ${filter.ApplyToLiveTvCategories !== false ? 'checked' : ''} />
+              Live TV Categories
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" class="apply-livetv-items" ${filter.ApplyToLiveTvItems !== false ? 'checked' : ''} />
+              Live TV Channels
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" class="apply-vod-categories" ${filter.ApplyToVodCategories !== false ? 'checked' : ''} />
+              VOD Categories
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" class="apply-vod-items" ${filter.ApplyToVodItems !== false ? 'checked' : ''} />
+              VOD Items
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" class="apply-series-categories" ${filter.ApplyToSeriesCategories !== false ? 'checked' : ''} />
+              Series Categories
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" class="apply-series-items" ${filter.ApplyToSeriesItems !== false ? 'checked' : ''} />
+              Series Items
+            </label>
+          </div>
+        </div>
       `;
 
       // Handle remove button
@@ -77,7 +106,90 @@ export default function (view) {
         }
       });
 
+      // Add input listeners for live preview
+      const patternInput = item.querySelector('.filter-pattern');
+      const replacementInput = item.querySelector('.filter-replacement');
+      let previewTimeout;
+      
+      const schedulePreview = () => {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(() => updatePreview(item), 500);
+      };
+      
+      patternInput.addEventListener('input', schedulePreview);
+      replacementInput.addEventListener('input', schedulePreview);
+
       return item;
+    }
+
+    async function updatePreview(filterItem) {
+      const pattern = filterItem.querySelector('.filter-pattern').value;
+      const replacement = filterItem.querySelector('.filter-replacement').value;
+      
+      if (!pattern) {
+        view.querySelector('#FilterPreviewSection').style.display = 'none';
+        return;
+      }
+
+      const previewSection = view.querySelector('#FilterPreviewSection');
+      const previewResults = view.querySelector('#PreviewResults');
+      const spinner = view.querySelector('#PreviewSpinner');
+      
+      previewSection.style.display = 'block';
+      spinner.style.display = 'block';
+      previewResults.innerHTML = '';
+
+      try {
+        const response = await ApiClient.fetch({
+          type: 'POST',
+          url: ApiClient.getUrl('Xtream/TestFilter'),
+          dataType: 'json',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            Pattern: pattern,
+            Replacement: replacement
+          })
+        });
+
+        spinner.style.display = 'none';
+
+        const renderPreviewSection = (title, items) => {
+          if (!items || items.length === 0) return '';
+          
+          const changedItems = items.filter(i => i.Changed);
+          if (changedItems.length === 0) return '';
+
+          let html = `<h4 style="margin-top: 15px;">${escapeHtml(title)}</h4>`;
+          html += '<table class="tblLibraryReport" style="width: 100%; border-collapse: collapse;">';
+          html += '<thead><tr><th>Before</th><th>After</th></tr></thead><tbody>';
+          
+          changedItems.forEach(item => {
+            html += `<tr>
+              <td style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">${escapeHtml(item.Before)}</td>
+              <td style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #00a4dc;">${escapeHtml(item.After)}</td>
+            </tr>`;
+          });
+          
+          html += '</tbody></table>';
+          return html;
+        };
+
+        let html = renderPreviewSection('Live TV Categories', response.LiveTvCategories);
+        html += renderPreviewSection('Live TV Channels', response.LiveTvItems);
+        html += renderPreviewSection('VOD Categories', response.VodCategories);
+        html += renderPreviewSection('VOD Items', response.VodItems);
+        html += renderPreviewSection('Series Categories', response.SeriesCategories);
+        html += renderPreviewSection('Series Items', response.SeriesItems);
+
+        if (!html) {
+          html = '<div class="fieldDescription" style="padding: 15px;">No matches found in sample data.</div>';
+        }
+
+        previewResults.innerHTML = html;
+      } catch (error) {
+        spinner.style.display = 'none';
+        previewResults.innerHTML = `<div class="fieldDescription" style="padding: 15px; color: #ff5722;">Preview error: ${escapeHtml(error.message || 'Unknown error')}</div>`;
+      }
     }
 
     async function loadFilters() {
@@ -131,7 +243,13 @@ export default function (view) {
               Replacement: item.querySelector('.filter-replacement').value,
               Description: item.querySelector('.filter-description').value,
               IsEnabled: item.querySelector('.filter-enabled').checked,
-              Order: index
+              Order: index,
+              ApplyToLiveTvCategories: item.querySelector('.apply-livetv-categories').checked,
+              ApplyToLiveTvItems: item.querySelector('.apply-livetv-items').checked,
+              ApplyToVodCategories: item.querySelector('.apply-vod-categories').checked,
+              ApplyToVodItems: item.querySelector('.apply-vod-items').checked,
+              ApplyToSeriesCategories: item.querySelector('.apply-series-categories').checked,
+              ApplyToSeriesItems: item.querySelector('.apply-series-items').checked
             });
           });
 

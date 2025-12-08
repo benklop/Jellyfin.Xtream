@@ -1,5 +1,5 @@
 <div id="XtreamNameFiltersPage" data-role="page" class="page type-interior pluginConfigurationPage withTabs"
-  data-require="emby-input,emby-button" data-controller="__plugin/XtreamNameFilters.js">
+  data-require="emby-input,emby-button,emby-checkbox" data-controller="__plugin/XtreamNameFilters.js">
   <div data-role="content">
     <div class="content-primary">
       <form id="XtreamNameFiltersForm">
@@ -19,6 +19,19 @@
           </button>
         </div>
         <br/>
+        <div id="FilterPreviewSection" style="display: none;">
+          <h3 class="sectionTitle">Live Preview</h3>
+          <div class="fieldDescription">
+            See how your filter affects actual data from your provider. Results update as you edit.
+          </div>
+          <div id="PreviewSpinner" style="text-align: center; padding: 20px; display: none;">
+            <div class="mdl-spinner mdl-js-spinner is-active"></div>
+          </div>
+          <div id="PreviewResults">
+            <!-- Preview results will be dynamically added here -->
+          </div>
+          <br/>
+        </div>
         <div>
           <button is="emby-button" type="submit" class="raised button-submit block">
             <span>Save</span>

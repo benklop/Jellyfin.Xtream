@@ -117,7 +117,7 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
     private Task<ChannelItemInfo> CreateChannelItemInfo(StreamInfo stream)
     {
         long added = long.Parse(stream.Added, CultureInfo.InvariantCulture);
-        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(stream.Name);
+        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(stream.Name, FilterScope.VodItem);
 
         List<MediaSourceInfo> sources =
         [

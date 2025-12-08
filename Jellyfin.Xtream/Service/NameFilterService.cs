@@ -31,8 +31,9 @@ public class NameFilterService
     /// </summary>
     /// <param name="input">The input string to filter.</param>
     /// <param name="filters">The collection of name filters to apply.</param>
+    /// <param name="scope">The scope where the filter is being applied.</param>
     /// <returns>The filtered string after all enabled filters have been applied.</returns>
-    public string ApplyFilters(string input, System.Collections.Generic.IEnumerable<NameFilter> filters)
+    public string ApplyFilters(string input, System.Collections.Generic.IEnumerable<NameFilter> filters, FilterScope scope)
     {
         if (string.IsNullOrWhiteSpace(input))
         {
@@ -41,8 +42,8 @@ public class NameFilterService
 
         var result = input;
 
-        // Apply filters in order
-        foreach (var filter in filters.Where(f => f.IsEnabled).OrderBy(f => f.Order))
+        // Apply filters in order, respecting their scope settings
+        foreach (var filter in filters.Where(f => f.IsEnabled && ShouldApplyFilter(f, scope)).OrderBy(f => f.Order))
         {
             try
             {
@@ -65,5 +66,19 @@ public class NameFilterService
         }
 
         return result.Trim();
+    }
+
+    private static bool ShouldApplyFilter(NameFilter filter, FilterScope scope)
+    {
+        return scope switch
+        {
+            FilterScope.LiveTvCategory => filter.ApplyToLiveTvCategories,
+            FilterScope.LiveTvItem => filter.ApplyToLiveTvItems,
+            FilterScope.VodCategory => filter.ApplyToVodCategories,
+            FilterScope.VodItem => filter.ApplyToVodItems,
+            FilterScope.SeriesCategory => filter.ApplyToSeriesCategories,
+            FilterScope.SeriesItem => filter.ApplyToSeriesItems,
+            _ => true
+        };
     }
 }

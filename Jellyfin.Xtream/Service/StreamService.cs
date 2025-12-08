@@ -106,12 +106,13 @@ public partial class StreamService(IXtreamClient xtreamClient, NameFilterService
     /// Name filters from configuration are applied before tag parsing.
     /// </summary>
     /// <param name="name">The name which should be parsed.</param>
+    /// <param name="scope">The scope where the name filter is being applied.</param>
     /// <returns>A <see cref="ParsedName"/> struct containing the cleaned title and parsed tags.</returns>
-    public ParsedName ParseName(string name)
+    public ParsedName ParseName(string name, FilterScope scope)
     {
         // Apply name filters first
         var config = Plugin.Instance.Configuration;
-        string filteredName = nameFilterService.ApplyFilters(name, config.NameFilters);
+        string filteredName = nameFilterService.ApplyFilters(name, config.NameFilters, scope);
 
         List<string> tags = [];
         string title = _tagRegex.Replace(
@@ -197,7 +198,7 @@ public partial class StreamService(IXtreamClient xtreamClient, NameFilterService
     /// <returns>A channel item representing the category.</returns>
     public ChannelItemInfo CreateChannelItemInfo(int prefix, Category category)
     {
-        ParsedName parsedName = ParseName(category.CategoryName);
+        ParsedName parsedName = ParseName(category.CategoryName, FilterScope.LiveTvCategory);
         return new ChannelItemInfo()
         {
             Id = ToGuid(prefix, category.CategoryId, 0, 0).ToString(),

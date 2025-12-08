@@ -124,7 +124,7 @@ public class CatchupChannel(ILogger<CatchupChannel> logger, IXtreamClient xtream
                 continue;
             }
 
-            ParsedName parsedName = plugin.StreamService.ParseName(channel.Name);
+            ParsedName parsedName = plugin.StreamService.ParseName(channel.Name, FilterScope.LiveTvItem);
             items.Add(new ChannelItemInfo()
             {
                 Id = StreamService.ToGuid(StreamService.CatchupPrefix, channel.CategoryId ?? 0, channel.StreamId, 0).ToString(),
@@ -150,7 +150,7 @@ public class CatchupChannel(ILogger<CatchupChannel> logger, IXtreamClient xtream
         List<StreamInfo> streams = await xtreamClient.GetLiveStreamsByCategoryAsync(plugin.Creds, categoryId, cancellationToken).ConfigureAwait(false);
         StreamInfo channel = streams.FirstOrDefault(s => s.StreamId == channelId)
             ?? throw new ArgumentException($"Channel with id {channelId} not found in category {categoryId}");
-        ParsedName parsedName = plugin.StreamService.ParseName(channel.Name);
+        ParsedName parsedName = plugin.StreamService.ParseName(channel.Name, FilterScope.LiveTvItem);
 
         List<ChannelItemInfo> items = [];
         for (int i = 0; i <= channel.TvArchiveDuration; i++)
@@ -215,7 +215,7 @@ public class CatchupChannel(ILogger<CatchupChannel> logger, IXtreamClient xtream
 
         foreach (EpgInfo epg in epgs.Listings.Where(epg => epg.Start <= end && epg.End >= start))
         {
-            ParsedName parsedName = plugin.StreamService.ParseName(epg.Title);
+            ParsedName parsedName = plugin.StreamService.ParseName(epg.Title, FilterScope.LiveTvItem);
             int durationMinutes = (int)Math.Ceiling((epg.End - epg.Start).TotalMinutes);
             string dateTitle = epg.Start.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture);
             List<MediaSourceInfo> sources = [

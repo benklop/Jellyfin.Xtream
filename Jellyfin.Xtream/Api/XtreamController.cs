@@ -201,4 +201,123 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
         var channels = streams.Select(CreateChannelResponse).ToList();
         return Ok(channels);
     }
+
+    /// <summary>
+    /// Test a name filter against sample data from all content types.
+    /// </summary>
+    /// <param name="request">The filter test request.</param>
+    /// <param name="cancellationToken">The cancellation token for cancelling requests.</param>
+    /// <returns>Filter test results showing before/after for sample items.</returns>
+    [Authorize(Policy = "RequiresElevation")]
+    [HttpPost("TestFilter")]
+#pragma warning disable CA3012 // Review code for regex injection vulnerabilities
+    public async Task<ActionResult<FilterTestResponse>> TestFilter([FromBody] FilterTestRequest request, CancellationToken cancellationToken)
+#pragma warning restore CA3012 // Review code for regex injection vulnerabilities
+    {
+        var response = new FilterTestResponse();
+
+#pragma warning disable CA3012 // Review code for regex injection vulnerabilities
+        try
+        {
+            var regex = new System.Text.RegularExpressions.Regex(request.Pattern, System.Text.RegularExpressions.RegexOptions.None, System.TimeSpan.FromSeconds(1));
+#pragma warning restore CA3012 // Review code for regex injection vulnerabilities
+
+            // Sample Live TV categories (max 5)
+            var liveTvCategories = await xtreamClient.GetLiveCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
+            foreach (var category in liveTvCategories.Take(5))
+            {
+                var after = regex.Replace(category.CategoryName, request.Replacement);
+                response.LiveTvCategories.Add(new FilterTestItem
+                {
+                    Before = category.CategoryName,
+                    After = after,
+                    Changed = after != category.CategoryName
+                });
+            }
+
+            // Sample Live TV items from first category (max 5)
+            if (liveTvCategories.Count > 0)
+            {
+                var liveStreams = await xtreamClient.GetLiveStreamsByCategoryAsync(Plugin.Instance.Creds, liveTvCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
+                foreach (var stream in liveStreams.Take(5))
+                {
+                    var after = regex.Replace(stream.Name, request.Replacement);
+                    response.LiveTvItems.Add(new FilterTestItem
+                    {
+                        Before = stream.Name,
+                        After = after,
+                        Changed = after != stream.Name
+                    });
+                }
+            }
+
+            // Sample VOD categories (max 5)
+            var vodCategories = await xtreamClient.GetVodCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
+            foreach (var category in vodCategories.Take(5))
+            {
+                var after = regex.Replace(category.CategoryName, request.Replacement);
+                response.VodCategories.Add(new FilterTestItem
+                {
+                    Before = category.CategoryName,
+                    After = after,
+                    Changed = after != category.CategoryName
+                });
+            }
+
+            // Sample VOD items from first category (max 5)
+            if (vodCategories.Count > 0)
+            {
+                var vodStreams = await xtreamClient.GetVodStreamsByCategoryAsync(Plugin.Instance.Creds, vodCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
+                foreach (var stream in vodStreams.Take(5))
+                {
+                    var after = regex.Replace(stream.Name, request.Replacement);
+                    response.VodItems.Add(new FilterTestItem
+                    {
+                        Before = stream.Name,
+                        After = after,
+                        Changed = after != stream.Name
+                    });
+                }
+            }
+
+            // Sample Series categories (max 5)
+            var seriesCategories = await xtreamClient.GetSeriesCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
+            foreach (var category in seriesCategories.Take(5))
+            {
+                var after = regex.Replace(category.CategoryName, request.Replacement);
+                response.SeriesCategories.Add(new FilterTestItem
+                {
+                    Before = category.CategoryName,
+                    After = after,
+                    Changed = after != category.CategoryName
+                });
+            }
+
+            // Sample Series items from first category (max 5)
+            if (seriesCategories.Count > 0)
+            {
+                var series = await xtreamClient.GetSeriesByCategoryAsync(Plugin.Instance.Creds, seriesCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
+                foreach (var s in series.Take(5))
+                {
+                    var after = regex.Replace(s.Name, request.Replacement);
+                    response.SeriesItems.Add(new FilterTestItem
+                    {
+                        Before = s.Name,
+                        After = after,
+                        Changed = after != s.Name
+                    });
+                }
+            }
+        }
+        catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
+        {
+            return BadRequest("Regex pattern timed out. Please simplify your pattern.");
+        }
+        catch (System.ArgumentException ex)
+        {
+            return BadRequest($"Invalid regex pattern: {ex.Message}");
+        }
+
+        return Ok(response);
+    }
 }

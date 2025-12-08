@@ -33,8 +33,9 @@ All Jellyfin item IDs are generated via `StreamService.ToGuid(prefix, id1, id2, 
 - `LiveTv`, `Vod`, `Series` dictionaries map category IDs to item ID sets
 - Empty `HashSet` means "all items in category"
 - `DataVersion` property (assembly version + config hash) triggers cache invalidation on updates
-- `Credentials` list supports multiple login accounts for load balancing across connections
-- `NameFilters` list contains ordered regex patterns for cleaning channel/group names
+- `Credentials` list (must be `List<T>` not `IList<T>` for XML serialization) supports multiple login accounts for load balancing
+- `NameFilters` list (must be `List<T>` not `IList<T>` for XML serialization) contains ordered regex patterns with scope controls
+- **XML Serialization**: Use `List<T>` with `#pragma warning disable CA1002` instead of `IList<T>` to avoid runtime errors
 
 ## Key Patterns
 
@@ -46,12 +47,17 @@ Custom converters in `Client/` handle malformed Xtream API responses:
 - **Nullable Error Handling**: `XtreamClient.NullableEventHandler()` silently ignores errors for nullable properties
 
 ### Tag Parsing and Name Filtering
-`StreamService.ParseName()` cleans and parses stream names:
-- **Name Filters**: Applied first via `NameFilterService.ApplyFilters()` using configured regex patterns
+`StreamService.ParseName(name, scope)` cleans and parses stream names:
+- **Name Filters**: Applied first via `NameFilterService.ApplyFilters(name, filters, scope)` using configured regex patterns
   - Filters processed in order defined by `Order` property
   - Supports capture groups ($1, $2, etc.) for selective preservation
   - Only enabled filters are applied
   - 1-second timeout per regex to prevent runaway patterns
+  - **Scope-based filtering**: Each filter has 6 boolean properties controlling where it applies:
+    - `ApplyToLiveTvCategories`, `ApplyToLiveTvItems`
+    - `ApplyToVodCategories`, `ApplyToVodItems`
+    - `ApplyToSeriesCategories`, `ApplyToSeriesItems`
+  - All `ParseName()` calls must specify `FilterScope` enum value
 - **Tag Extraction**: After filtering, extracts tags from cleaned names
   - Regex pattern: `[TAG]` or `|TAG|` format
   - Also handles Unicode Block Elements (\u2580-\u259F) as tag separators
@@ -74,11 +80,21 @@ Xtream URLs include credentials in path. Plugin exposes these via Jellyfin API -
 
 ### Name Filter System
 `NameFilterService` applies ordered regex patterns to clean channel and group names:
-- Filters stored in `PluginConfiguration.NameFilters` as `IList<NameFilter>`
-- Each filter has: `Pattern` (regex), `Replacement` (with $1, $2 groups), `Description`, `IsEnabled`, `Order`
-- Applied before tag extraction in `StreamService.ParseName()`
-- UI in `XtreamNameFilters.html` allows adding/editing/reordering filters
-- Example use case: Remove country prefixes like "UK - Channel Name" → "Channel Name" with pattern `^UK\s*-\s*(.*)` and replacement `$1`
+- Filters stored in `PluginConfiguration.NameFilters` as `List<NameFilter>` (XML serialization requirement)
+- Each filter has:
+  - `Pattern` (regex), `Replacement` (with $1, $2 groups), `Description`, `IsEnabled`, `Order`
+  - Scope controls: `ApplyToLiveTvCategories`, `ApplyToLiveTvItems`, `ApplyToVodCategories`, `ApplyToVodItems`, `ApplyToSeriesCategories`, `ApplyToSeriesItems`
+- Applied before tag extraction in `StreamService.ParseName(name, scope)`
+- **UI Features** (`XtreamNameFilters.html/js`):
+  - Add/edit/reorder filters with drag-like up/down buttons
+  - Checkboxes to select which content types each filter applies to
+  - **Live Preview**: Real-time preview showing before/after results on sample data
+    - Updates 500ms after typing stops (debounced)
+    - API endpoint: `POST /Xtream/TestFilter` returns samples from all content types
+    - Shows only items that changed, color-coded in blue
+  - Regex validation before save
+- **FilterScope Enum**: `LiveTvCategory`, `LiveTvItem`, `VodCategory`, `VodItem`, `SeriesCategory`, `SeriesItem`
+- Example use case: Remove country prefixes like "UK - Channel Name" → "Channel Name" with pattern `^UK\s*-\s*(.*)` and replacement `$1`, applied only to Live TV items
 
 ## Build & Development
 
@@ -96,6 +112,14 @@ Xtream URLs include credentials in path. Plugin exposes these via Jellyfin API -
 
 ### Embedded Resources
 Configuration web UI files in `Configuration/Web/` are embedded resources (`.html`, `.js`, `.css`). Changes require rebuild to take effect.
+
+### JavaScript UI Patterns
+All configuration pages follow consistent patterns:
+- Use `form.dataset.listenerAttached` to prevent duplicate event listeners (not `isInitialized` variable)
+- Load data once per tab view using the attached flag
+- Access plugin ID via `Xtream.pluginConfig.UniqueId` (never hardcode GUID)
+- Tab indices: 0=Credentials, 1=Live TV, 2=TV overrides, 3=Name Filters, 4=VOD, 5=Series
+- Use `Dashboard.processPluginConfigurationUpdateResult()` for save feedback
 
 ## Common Tasks
 
@@ -122,6 +146,20 @@ Configuration web UI files in `Configuration/Web/` are embedded resources (`.htm
 - Located in `Plugin.cs`: `Assembly.Version + Configuration.GetHashCode()`
 - Channels return this via `DataVersion` property
 - Changing config or plugin version automatically invalidates Jellyfin cache
+
+### API Controllers
+`XtreamController` provides configuration endpoints:
+- `GET /Xtream/LiveCategories`, `/VodCategories`, `/SeriesCategories` - List categories
+- `GET /Xtream/LiveCategories/{id}`, `/VodCategories/{id}`, `/SeriesCategories/{id}` - Get items in category
+- `GET /Xtream/LiveTv` - Get all configured channels with overrides
+- `POST /Xtream/TestFilter` - Test name filter against sample data (returns before/after for up to 5 items per type)
+- All endpoints require elevation (admin access)
+- Use `#pragma warning disable CA3012` for regex injection on authorized endpoints
+
+### Bug Fixes Applied
+- **Series LastModified**: Made nullable with `DateTime.UtcNow` fallback (some providers omit this field)
+- **XML Serialization**: Changed `IList<T>` to `List<T>` in configuration classes with CA1002 suppressions
+- **JavaScript**: Standardized on `form.dataset.listenerAttached` pattern, fixed duplicate plugin GUID references
 
 ## Important Conventions
 

@@ -127,7 +127,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private ChannelItemInfo CreateChannelItemInfo(Series series)
     {
-        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(series.Name);
+        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(series.Name, FilterScope.SeriesItem);
         return new ChannelItemInfo()
         {
             CommunityRating = (float)series.Rating5Based,
@@ -169,7 +169,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
         Season? season = series.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
         if (season != null)
         {
-            ParsedName parsedName = Plugin.Instance.StreamService.ParseName(season.Name);
+            ParsedName parsedName = Plugin.Instance.StreamService.ParseName(season.Name, FilterScope.SeriesItem);
             name = parsedName.Title;
             tags.AddRange(parsedName.Tags);
             created = season.AirDate;
@@ -198,7 +198,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
     private ChannelItemInfo CreateChannelItemInfo(SeriesStreamInfo series, Season? season, Episode episode)
     {
         Client.Models.SeriesInfo serie = series.Info;
-        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(episode.Title);
+        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(episode.Title, FilterScope.SeriesItem);
         List<MediaSourceInfo> sources =
         [
             Plugin.Instance.StreamService.GetMediaSourceInfo(
