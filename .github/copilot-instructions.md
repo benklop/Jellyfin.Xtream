@@ -44,6 +44,7 @@ Custom converters in `Client/` handle malformed Xtream API responses:
 - **StringBoolConverter**: Converts string "0"/"1" to boolean
 - **SingularToListConverter<T>**: Wraps single objects into lists (API inconsistency)
 - **OnlyObjectConverter**, **Base64Converter**: Handle edge cases in API responses
+- **LenientDateTimeConverter**: Handles malformed dates like "2024-01-18 (USA)" by extracting YYYY-MM-DD pattern
 - **Nullable Error Handling**: `XtreamClient.NullableEventHandler()` silently ignores errors for nullable properties
 
 ### Tag Parsing and Name Filtering
@@ -160,6 +161,8 @@ All configuration pages follow consistent patterns:
 - **Series LastModified**: Made nullable with `DateTime.UtcNow` fallback (some providers omit this field)
 - **XML Serialization**: Changed `IList<T>` to `List<T>` in configuration classes with CA1002 suppressions
 - **JavaScript**: Standardized on `form.dataset.listenerAttached` pattern, fixed duplicate plugin GUID references
+- **Malformed Dates**: `LenientDateTimeConverter` handles dates with extra text like "2024-01-18 (USA)" on `VodInfo.ReleaseDate` and `EpisodeInfo.ReleaseDate`
+- **Add Filter Defaults**: New filters now initialize with all 6 scope properties set to `true` to match backend defaults
 
 ## Important Conventions
 

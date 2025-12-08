@@ -212,7 +212,13 @@ export default function (view) {
           Replacement: '',
           Description: '',
           IsEnabled: true,
-          Order: filtersList.children.length
+          Order: filtersList.children.length,
+          ApplyToLiveTvCategories: true,
+          ApplyToLiveTvItems: true,
+          ApplyToVodCategories: true,
+          ApplyToVodItems: true,
+          ApplyToSeriesCategories: true,
+          ApplyToSeriesItems: true
         };
         const item = createFilterItem(newFilter, filtersList.children.length);
         filtersList.appendChild(item);
