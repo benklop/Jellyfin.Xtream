@@ -9,7 +9,6 @@ export default function (view) {
     Xtream.setTabs(3);
 
     const pluginId = Xtream.pluginConfig.UniqueId;
-    const form = view.querySelector('#XtreamNameFiltersForm');
     const filtersList = view.querySelector('#NameFiltersList');
 
     function escapeHtml(text) {
@@ -91,8 +90,10 @@ export default function (view) {
       });
     }
 
-    // Only set up event listeners once
-    if (!isInitialized) {
+    await loadFilters();
+
+    const form = view.querySelector('#XtreamNameFiltersForm');
+    if (!form.dataset.listenerAttached) {
       view.querySelector('#AddFilter').addEventListener('click', () => {
         const newFilter = {
           Pattern: '',
@@ -147,10 +148,7 @@ export default function (view) {
         }
       });
 
-      isInitialized = true;
-      
-      // Load filters after setting up event listeners
-      await loadFilters();
+      form.dataset.listenerAttached = 'true';
     }
   });
 }
