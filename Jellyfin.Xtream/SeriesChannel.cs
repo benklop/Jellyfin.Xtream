@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -139,6 +140,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
             Name = parsedName.Title,
             SeriesName = parsedName.Title,
             People = GetPeople(series.Cast),
+            ProviderIds = { { Providers.XtreamSeriesProvider.ProviderName, series.SeriesId.ToString(CultureInfo.InvariantCulture) } },
             Tags = new List<string>(parsedName.Tags),
             Type = ChannelItemType.Folder,
         };

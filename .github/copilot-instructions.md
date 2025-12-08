@@ -14,7 +14,8 @@ A Jellyfin plugin that integrates Xtream-compatible IPTV APIs, providing Live TV
 - **XtreamClient** (`Client/XtreamClient.cs`): HTTP client wrapper for Xtream API communication
 - **StreamService** (`Service/StreamService.cs`): Core business logic for stream management and GUID generation
 - **NameFilterService** (`Service/NameFilterService.cs`): Applies regex-based name filters to clean channel and group names
-- **XtreamVodProvider** (`Providers/XtreamVodProvider.cs`): Metadata provider with TMDB integration
+- **XtreamVodProvider** (`Providers/XtreamVodProvider.cs`): Metadata provider with TMDB integration for Movies
+- **XtreamSeriesProvider** (`Providers/XtreamSeriesProvider.cs`): Metadata provider with TMDB integration for TV Series
 
 ### Dependency Injection
 Services are registered in `PluginServiceRegistrator.cs`:
@@ -141,6 +142,20 @@ All configuration pages follow consistent patterns:
 - All API methods in `XtreamClient.cs` use `ConnectionInfo` from `Plugin.Instance.Creds`
 - JSON settings with error handler: `_serializerSettings` with `NullableEventHandler`
 - Add converter to model if API response is malformed
+
+### Metadata Providers
+Both VOD and Series support TMDB metadata override via Jellyfin's provider system:
+- **XtreamVodProvider**: Searches TMDB for movies using parsed title and year
+  - Uses `IsTmdbVodOverride` config property (default: true)
+  - Sets TMDB provider ID, triggering Jellyfin's metadata refresh
+  - Year extracted from `VodInfo.ReleaseDate` field
+- **XtreamSeriesProvider**: Searches TMDB for TV series using parsed title and extracted year
+  - Uses `IsTmdbSeriesOverride` config property (default: true)
+  - Extracts year from series name using regex pattern `\((\d{4})\)` (handles formats like "Series Name (2024)" or "Series Name (2024) (US)")
+  - Year extraction improves TMDB matching accuracy since Xtream API doesn't provide structured release date for series
+  - Requires TMDB plugin installed and configured in Jellyfin
+- Both providers use `providerManager.GetRemoteSearchResults()` with `SearchProviderName = "TheMovieDb"`
+- When TMDB ID found, sets `options.ReplaceAllMetadata = true` to fetch full metadata
 
 ### Testing Configuration Changes
 `DataVersion` property drives cache invalidation:

@@ -72,6 +72,11 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool IsTmdbVodOverride { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the Series channel should override metadata with TMDB.
+    /// </summary>
+    public bool IsTmdbSeriesOverride { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets the channels displayed in Live TV.
     /// </summary>
     public SerializableDictionary<int, HashSet<int>> LiveTv { get; set; } = [];
