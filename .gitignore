@@ -1,9 +1,0 @@
-bin/
-obj/
-.vs/
-.idea/
-.vscode/
-artifacts
-TestResults/
-*.dll
-Jellyfin.Xtream.dll
