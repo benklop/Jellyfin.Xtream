@@ -40,6 +40,13 @@ public class PluginConfiguration : BasePluginConfiguration
     public string Password { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the list of additional credentials for load balancing.
+    /// </summary>
+#pragma warning disable CA1002 // XML serialization requires List<T>
+    public List<CredentialInfo> Credentials { get; set; } = [];
+#pragma warning restore CA1002
+
+    /// <summary>
     /// Gets or sets the user agent override.
     /// </summary>
     public string UserAgent { get; set; } = string.Empty;
@@ -63,6 +70,21 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets a value indicating whether the Video On-demand channel is visible.
     /// </summary>
     public bool IsTmdbVodOverride { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the Series channel should override metadata with TMDB.
+    /// </summary>
+    public bool IsTmdbSeriesOverride { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to collapse all VOD categories into a flat list.
+    /// </summary>
+    public bool CollapseVodCategories { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to collapse all Series categories into a flat list.
+    /// </summary>
+    public bool CollapseSeriesCategories { get; set; }
 
     /// <summary>
     /// Gets or sets the format for the catch-up URL.
@@ -123,5 +145,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the path where the XMLTV cache file will be stored. If empty, uses the plugin's data directory.
     /// </summary>
     public string XmlTvCachePath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the list of name filters for cleaning channel and group names.
+    /// </summary>
+#pragma warning disable CA1002 // XML serialization requires List<T>
+    public List<NameFilter> NameFilters { get; set; } = [];
+#pragma warning restore CA1002
 }
 #pragma warning restore CA2227

@@ -37,6 +37,7 @@ public class VodInfo
     public decimal? Rating { get; set; }
 
     [JsonProperty("releasedate")]
+    [JsonConverter(typeof(LenientDateTimeConverter))]
     public DateTime? ReleaseDate { get; set; }
 
     [JsonProperty("duration_secs")]

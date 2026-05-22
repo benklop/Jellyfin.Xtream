@@ -20,6 +20,7 @@ using MediaBrowser.Controller.Channels;
 using MediaBrowser.Controller.LiveTv;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Jellyfin.Xtream;
@@ -30,7 +31,8 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     /// <inheritdoc />
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
-        // Core services
+        serviceCollection.AddSingleton<ConnectionPool>();
+        serviceCollection.AddSingleton<Service.NameFilterService>();
         serviceCollection.AddSingleton<IXtreamClient, XtreamClient>();
         serviceCollection.AddSingleton<ILiveTvService, LiveTvService>();
 
@@ -44,5 +46,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
 
         // Providers
         serviceCollection.AddSingleton<IPreRefreshProvider, XtreamVodProvider>();
+        serviceCollection.AddSingleton<IPreRefreshProvider, XtreamSeriesProvider>();
+        serviceCollection.AddSingleton<IScheduledTask, Service.MetadataRefreshTask>();
     }
 }

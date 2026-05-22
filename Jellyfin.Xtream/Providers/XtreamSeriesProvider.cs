@@ -23,7 +23,7 @@ using System.Threading.Tasks;
 using Jellyfin.Xtream.Client;
 using Jellyfin.Xtream.Client.Models;
 using Jellyfin.Xtream.Service;
-using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
@@ -33,17 +33,17 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Xtream.Providers;
 
 /// <summary>
-/// The Xtream Codes VOD metadata provider.
+/// The Xtream Codes Series metadata provider.
 /// </summary>
 /// <param name="logger">Instance of the <see cref="ILogger"/> interface.</param>
 /// <param name="providerManager">Instance of the <see cref="IProviderManager"/> interface.</param>
 /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
-public partial class XtreamVodProvider(ILogger<VodChannel> logger, IProviderManager providerManager, IXtreamClient xtreamClient) : ICustomMetadataProvider<Movie>, IPreRefreshProvider
+public partial class XtreamSeriesProvider(ILogger<SeriesChannel> logger, IProviderManager providerManager, IXtreamClient xtreamClient) : ICustomMetadataProvider<MediaBrowser.Controller.Entities.TV.Series>, IPreRefreshProvider
 {
     /// <summary>
     /// The name of the provider.
     /// </summary>
-    public const string ProviderName = "XtreamVodProvider";
+    public const string ProviderName = "XtreamSeriesProvider";
 
     /// <inheritdoc/>
     public string Name => ProviderName;
@@ -55,9 +55,9 @@ public partial class XtreamVodProvider(ILogger<VodChannel> logger, IProviderMana
     private static partial Regex YearPattern();
 
     /// <summary>
-    /// Extracts year from movie name if present in format like "(2024)" or "(2024) (US)".
+    /// Extracts year from series name if present in format like "(2024)" or "(2024) (US)".
     /// </summary>
-    /// <param name="name">The movie name to parse.</param>
+    /// <param name="name">The series name to parse.</param>
     /// <returns>The extracted year or null if not found.</returns>
     private static int? ExtractYearFromName(string name)
     {
@@ -75,9 +75,9 @@ public partial class XtreamVodProvider(ILogger<VodChannel> logger, IProviderMana
     }
 
     /// <inheritdoc/>
-    public async Task<ItemUpdateType> FetchAsync(Movie item, MetadataRefreshOptions options, CancellationToken cancellationToken)
+    public async Task<ItemUpdateType> FetchAsync(MediaBrowser.Controller.Entities.TV.Series item, MetadataRefreshOptions options, CancellationToken cancellationToken)
     {
-        if (!Plugin.Instance.Configuration.IsVodVisible)
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
         {
             return ItemUpdateType.None;
         }
@@ -85,70 +85,54 @@ public partial class XtreamVodProvider(ILogger<VodChannel> logger, IProviderMana
         string? idStr = item.GetProviderId(ProviderName);
         if (idStr is not null)
         {
-            logger.LogDebug("Getting metadata for movie {Id}", idStr);
+            logger.LogDebug("Getting metadata for series {Id}", idStr);
             int id = int.Parse(idStr, CultureInfo.InvariantCulture);
-            VodStreamInfo vod = await xtreamClient.GetVodInfoAsync(Plugin.Instance.Creds, id, cancellationToken).ConfigureAwait(false);
-            VodInfo? i = vod.Info;
+            SeriesStreamInfo series = await xtreamClient.GetSeriesStreamsBySeriesAsync(Plugin.Instance.Creds, id, cancellationToken).ConfigureAwait(false);
+            Client.Models.SeriesInfo? info = series.Info;
 
-            if (i is null)
+            if (info is null)
             {
                 return ItemUpdateType.None;
             }
 
-            item.Overview ??= i.Plot;
-            item.PremiereDate ??= i.ReleaseDate;
-            item.RunTimeTicks ??= i.DurationSecs * TimeSpan.TicksPerSecond;
-            item.TotalBitrate ??= i.Bitrate;
+            item.Overview ??= info.Plot;
+            item.CommunityRating ??= (float)info.Rating;
 
-            if (i.Genre is string genres)
+            if (info.Genre is string genres)
             {
                 item.Genres ??= genres.Split(',').Select(genre => genre.Trim()).ToArray();
             }
 
             if (!item.HasProviderId(MetadataProvider.Tmdb))
             {
-                if (i.TmdbId is int tmdbId)
+                if (Plugin.Instance.Configuration.IsTmdbSeriesOverride)
                 {
-                    options.ReplaceAllMetadata = true;
-                    item.SetProviderId(MetadataProvider.Tmdb, tmdbId.ToString(CultureInfo.InvariantCulture));
-                }
-                else if (Plugin.Instance.Configuration.IsTmdbVodOverride)
-                {
-                    // Extract year from movie name if ReleaseDate not available (e.g., "Movie Name (2024)" or "Movie Name (2024) (US)")
-                    int? yearFromTitle = ExtractYearFromName(vod.MovieData?.Name ?? string.Empty);
-                    string searchName = Plugin.Instance.StreamService.ParseName(vod.MovieData?.Name ?? string.Empty, FilterScope.VodItem).Title;
-                    int? searchYear = item.PremiereDate?.Year ?? yearFromTitle;
-
-                    logger.LogDebug("TMDB search for movie ID {Id}: Name='{Name}', Year={Year}, OriginalName='{OriginalName}'", id, searchName, searchYear, vod.MovieData?.Name);
+                    // Extract year from series name if present (e.g., "Series Name (2024)" or "Series Name (2024) (US)")
+                    int? year = ExtractYearFromName(info.Name ?? string.Empty);
 
                     // Try to fetch the TMDB id to get proper metadata.
-                    RemoteSearchQuery<MovieInfo> query = new()
+                    RemoteSearchQuery<MediaBrowser.Controller.Providers.SeriesInfo> query = new()
                     {
                         SearchInfo = new()
                         {
-                            Name = searchName,
-                            Year = searchYear,
+                            Name = Plugin.Instance.StreamService.ParseName(info.Name ?? string.Empty, FilterScope.SeriesItem).Title,
+                            Year = year,
                         },
                         SearchProviderName = "TheMovieDb",
                     };
-                    IEnumerable<RemoteSearchResult> results = await providerManager.GetRemoteSearchResults<Movie, MovieInfo>(query, cancellationToken).ConfigureAwait(false);
+                    IEnumerable<RemoteSearchResult> results = await providerManager.GetRemoteSearchResults<MediaBrowser.Controller.Entities.TV.Series, MediaBrowser.Controller.Providers.SeriesInfo>(query, cancellationToken).ConfigureAwait(false);
                     if (results.Any())
                     {
-                        RemoteSearchResult tmdbMovie = results.First();
-                        logger.LogDebug("TMDB match for movie ID {Id}: {TmdbTitle} ({TmdbId})", id, tmdbMovie.Name, tmdbMovie.GetProviderId(MetadataProvider.Tmdb));
-                        if (tmdbMovie.HasProviderId(MetadataProvider.Tmdb))
+                        RemoteSearchResult tmdbSeries = results.First();
+                        if (tmdbSeries.HasProviderId(MetadataProvider.Tmdb))
                         {
-                            string? queryId = tmdbMovie.GetProviderId(MetadataProvider.Tmdb);
+                            string? queryId = tmdbSeries.GetProviderId(MetadataProvider.Tmdb);
                             if (queryId is not null)
                             {
                                 options.ReplaceAllMetadata = true;
                                 item.SetProviderId(MetadataProvider.Tmdb, queryId);
                             }
                         }
-                    }
-                    else
-                    {
-                        logger.LogDebug("No TMDB match found for movie ID {Id}", id);
                     }
                 }
             }

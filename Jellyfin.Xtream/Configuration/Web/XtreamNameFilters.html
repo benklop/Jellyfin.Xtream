@@ -1,0 +1,46 @@
+<div id="XtreamNameFiltersPage" data-role="page" class="page type-interior pluginConfigurationPage withTabs"
+  data-require="emby-input,emby-button,emby-checkbox" data-controller="__plugin/XtreamNameFilters.js">
+  <div data-role="content">
+    <div class="content-primary">
+      <form id="XtreamNameFiltersForm">
+        <div class="sectionTitleContainer">
+          <h2 class="sectionTitle">Name Filters</h2>
+          <div class="fieldDescription">
+            Configure regex patterns to clean channel and group names. Filters are applied in order before tag extraction.
+            Use capture groups ($1, $2, etc.) in replacements to keep parts of the name.
+            <br/><br/>
+            <strong>Note:</strong> Removing year information (e.g., "(2024)") from series titles may reduce TMDB metadata matching accuracy.
+            Years in titles help identify the correct series when multiple versions exist.
+          </div>
+        </div>
+        <div id="NameFiltersList" class="paperList">
+          <!-- Name filters will be dynamically added here -->
+        </div>
+        <div>
+          <button id="AddFilter" type="button" is="emby-button" class="raised">
+            <span>Add Filter</span>
+          </button>
+        </div>
+        <br/>
+        <div id="FilterPreviewSection" style="display: none;">
+          <h3 class="sectionTitle">Live Preview</h3>
+          <div class="fieldDescription">
+            See how your filter affects actual data from your provider. Results update as you edit.
+          </div>
+          <div id="PreviewSpinner" style="text-align: center; padding: 20px; display: none;">
+            <div class="mdl-spinner mdl-js-spinner is-active"></div>
+          </div>
+          <div id="PreviewResults">
+            <!-- Preview results will be dynamically added here -->
+          </div>
+          <br/>
+        </div>
+        <div>
+          <button is="emby-button" type="submit" class="raised button-submit block">
+            <span>Save</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
