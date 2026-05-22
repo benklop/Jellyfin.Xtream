@@ -7,19 +7,19 @@ categories:
   - title: ':boom: Breaking changes'
     labels:
       - breaking
-      - semver: major
+      - 'semver: major'
   - title: ':tada: New features and improvements'
     labels:
       - enhancement
       - feature
-      - semver: minor
+      - 'semver: minor'
   - title: ':bug: Bug Fixes'
     labels:
       - bug
       - fix
       - bugfix
       - regression
-      - semver: patch
+      - 'semver: patch'
   - title: ':white_check_mark: Tests'
     labels:
       - test
@@ -50,16 +50,16 @@ change-title-escapes: '\<*_&'
 version-resolver:
   major:
     labels:
-      - semver: major
+      - 'semver: major'
       - breaking
   minor:
     labels:
-      - semver: minor
+      - 'semver: minor'
       - enhancement
       - feature
   patch:
     labels:
-      - semver: patch
+      - 'semver: patch'
       - bug
       - fix
       - bugfix
