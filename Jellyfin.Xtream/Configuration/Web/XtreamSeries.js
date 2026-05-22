@@ -7,9 +7,11 @@ export default function (view) {
     const getConfig = ApiClient.getPluginConfiguration(pluginId);
     const visible = view.querySelector("#Visible");
     const tmdbOverride = view.querySelector("#TmdbOverride");
+    const collapseCategories = view.querySelector("#CollapseCategories");
     getConfig.then((config) => {
       visible.checked = config.IsSeriesVisible;
       tmdbOverride.checked = config.IsTmdbSeriesOverride;
+      collapseCategories.checked = config.CollapseSeriesCategories;
     });
     const table = view.querySelector('#SeriesContent');
     return Xtream.populateCategoriesTable(
@@ -52,10 +54,12 @@ export default function (view) {
           const pluginId = Xtream.pluginConfig.UniqueId;
           const visible = view.querySelector("#Visible");
           const tmdbOverride = view.querySelector("#TmdbOverride");
+          const collapseCategories = view.querySelector("#CollapseCategories");
 
           ApiClient.getPluginConfiguration(pluginId).then((config) => {
             config.IsSeriesVisible = visible.checked;
             config.IsTmdbSeriesOverride = tmdbOverride.checked;
+            config.CollapseSeriesCategories = collapseCategories.checked;
             config.Series = currentData;
             ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
               Dashboard.processPluginConfigurationUpdateResult(result);

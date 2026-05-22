@@ -59,12 +59,20 @@ public class MetadataRefreshTask(IXtreamClient xtreamClient, ILogger<MetadataRef
                 logger.LogInformation("Processing VOD metadata");
                 totalItems += await RefreshVodMetadata(progress, cancellationToken).ConfigureAwait(false);
             }
+            else
+            {
+                logger.LogInformation("Skipping VOD metadata refresh (VOD channel disabled)");
+            }
 
             // Refresh Series metadata
             if (plugin.Configuration.IsSeriesVisible)
             {
                 logger.LogInformation("Processing Series metadata");
                 totalItems += await RefreshSeriesMetadata(progress, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                logger.LogInformation("Skipping Series metadata refresh (Series channel disabled)");
             }
 
             logger.LogInformation("Xtream metadata refresh completed. Processed {TotalItems} items", totalItems);

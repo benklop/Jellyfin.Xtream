@@ -17,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Xtream.Client;
@@ -37,7 +38,7 @@ namespace Jellyfin.Xtream.Providers;
 /// <param name="logger">Instance of the <see cref="ILogger"/> interface.</param>
 /// <param name="providerManager">Instance of the <see cref="IProviderManager"/> interface.</param>
 /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
-public class XtreamVodProvider(ILogger<VodChannel> logger, IProviderManager providerManager, IXtreamClient xtreamClient) : ICustomMetadataProvider<Movie>, IPreRefreshProvider
+public partial class XtreamVodProvider(ILogger<VodChannel> logger, IProviderManager providerManager, IXtreamClient xtreamClient) : ICustomMetadataProvider<Movie>, IPreRefreshProvider
 {
     /// <summary>
     /// The name of the provider.
@@ -47,9 +48,40 @@ public class XtreamVodProvider(ILogger<VodChannel> logger, IProviderManager prov
     /// <inheritdoc/>
     public string Name => ProviderName;
 
+    /// <summary>
+    /// Regex pattern to extract year from parenthetical content like "(2024)" or "(2024) (US)".
+    /// </summary>
+    [GeneratedRegex(@"\((\d{4})\)")]
+    private static partial Regex YearPattern();
+
+    /// <summary>
+    /// Extracts year from movie name if present in format like "(2024)" or "(2024) (US)".
+    /// </summary>
+    /// <param name="name">The movie name to parse.</param>
+    /// <returns>The extracted year or null if not found.</returns>
+    private static int? ExtractYearFromName(string name)
+    {
+        Match match = YearPattern().Match(name);
+        if (match.Success && int.TryParse(match.Groups[1].Value, out int year))
+        {
+            // Sanity check: year should be reasonable (between 1900 and current year + 5)
+            if (year >= 1900 && year <= DateTime.UtcNow.Year + 5)
+            {
+                return year;
+            }
+        }
+
+        return null;
+    }
+
     /// <inheritdoc/>
     public async Task<ItemUpdateType> FetchAsync(Movie item, MetadataRefreshOptions options, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsVodVisible)
+        {
+            return ItemUpdateType.None;
+        }
+
         string? idStr = item.GetProviderId(ProviderName);
         if (idStr is not null)
         {
@@ -82,13 +114,20 @@ public class XtreamVodProvider(ILogger<VodChannel> logger, IProviderManager prov
                 }
                 else if (Plugin.Instance.Configuration.IsTmdbVodOverride)
                 {
+                    // Extract year from movie name if ReleaseDate not available (e.g., "Movie Name (2024)" or "Movie Name (2024) (US)")
+                    int? yearFromTitle = ExtractYearFromName(vod.MovieData?.Name ?? string.Empty);
+                    string searchName = Plugin.Instance.StreamService.ParseName(vod.MovieData?.Name ?? string.Empty, FilterScope.VodItem).Title;
+                    int? searchYear = item.PremiereDate?.Year ?? yearFromTitle;
+
+                    logger.LogDebug("TMDB search for movie ID {Id}: Name='{Name}', Year={Year}, OriginalName='{OriginalName}'", id, searchName, searchYear, vod.MovieData?.Name);
+
                     // Try to fetch the TMDB id to get proper metadata.
                     RemoteSearchQuery<MovieInfo> query = new()
                     {
                         SearchInfo = new()
                         {
-                            Name = Plugin.Instance.StreamService.ParseName(vod.MovieData?.Name ?? string.Empty, FilterScope.VodItem).Title,
-                            Year = item.PremiereDate?.Year,
+                            Name = searchName,
+                            Year = searchYear,
                         },
                         SearchProviderName = "TheMovieDb",
                     };
@@ -96,6 +135,7 @@ public class XtreamVodProvider(ILogger<VodChannel> logger, IProviderManager prov
                     if (results.Any())
                     {
                         RemoteSearchResult tmdbMovie = results.First();
+                        logger.LogDebug("TMDB match for movie ID {Id}: {TmdbTitle} ({TmdbId})", id, tmdbMovie.Name, tmdbMovie.GetProviderId(MetadataProvider.Tmdb));
                         if (tmdbMovie.HasProviderId(MetadataProvider.Tmdb))
                         {
                             string? queryId = tmdbMovie.GetProviderId(MetadataProvider.Tmdb);
@@ -105,6 +145,10 @@ public class XtreamVodProvider(ILogger<VodChannel> logger, IProviderManager prov
                                 item.SetProviderId(MetadataProvider.Tmdb, queryId);
                             }
                         }
+                    }
+                    else
+                    {
+                        logger.LogDebug("No TMDB match found for movie ID {Id}", id);
                     }
                 }
             }

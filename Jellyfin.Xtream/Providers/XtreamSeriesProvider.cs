@@ -77,6 +77,11 @@ public partial class XtreamSeriesProvider(ILogger<SeriesChannel> logger, IProvid
     /// <inheritdoc/>
     public async Task<ItemUpdateType> FetchAsync(MediaBrowser.Controller.Entities.TV.Series item, MetadataRefreshOptions options, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
+        {
+            return ItemUpdateType.None;
+        }
+
         string? idStr = item.GetProviderId(ProviderName);
         if (idStr is not null)
         {

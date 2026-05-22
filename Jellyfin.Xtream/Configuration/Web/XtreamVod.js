@@ -9,6 +9,8 @@ export default function (view) {
     getConfig.then((config) => visible.checked = config.IsVodVisible);
     const tmdbOverride = view.querySelector("#TmdbOverride");
     getConfig.then((config) => tmdbOverride.checked = config.IsTmdbVodOverride);
+    const collapseCategories = view.querySelector("#CollapseCategories");
+    getConfig.then((config) => collapseCategories.checked = config.CollapseVodCategories);
     const table = view.querySelector('#VodContent');
     return Xtream.populateCategoriesTable(
       table,
@@ -50,10 +52,12 @@ export default function (view) {
           const pluginId = Xtream.pluginConfig.UniqueId;
           const visible = view.querySelector("#Visible");
           const tmdbOverride = view.querySelector("#TmdbOverride");
+          const collapseCategories = view.querySelector("#CollapseCategories");
 
           ApiClient.getPluginConfiguration(pluginId).then((config) => {
             config.IsVodVisible = visible.checked;
             config.IsTmdbVodOverride = tmdbOverride.checked;
+            config.CollapseVodCategories = collapseCategories.checked;
             config.Vod = currentData;
             ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
               Dashboard.processPluginConfigurationUpdateResult(result);

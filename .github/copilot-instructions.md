@@ -36,6 +36,10 @@ All Jellyfin item IDs are generated via `StreamService.ToGuid(prefix, id1, id2, 
 - `DataVersion` property (assembly version + config hash) triggers cache invalidation on updates
 - `Credentials` list (must be `List<T>` not `IList<T>` for XML serialization) supports multiple login accounts for load balancing
 - `NameFilters` list (must be `List<T>` not `IList<T>` for XML serialization) contains ordered regex patterns with scope controls
+- **Collapse Categories**: `CollapseVodCategories` and `CollapseSeriesCategories` boolean properties flatten content display
+  - When enabled, bypasses category folders and shows all items in a single list
+  - Improves browsing for large libraries with many categories
+  - Configured via checkboxes in VOD and Series UI tabs
 - **XML Serialization**: Use `List<T>` with `#pragma warning disable CA1002` instead of `IList<T>` to avoid runtime errors
 
 ## Key Patterns

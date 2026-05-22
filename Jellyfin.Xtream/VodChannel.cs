@@ -88,10 +88,24 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
     /// <inheritdoc />
     public async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsVodVisible)
+        {
+            return new ChannelItemResult()
+            {
+                Items = [],
+                TotalRecordCount = 0,
+            };
+        }
+
         try
         {
             if (string.IsNullOrEmpty(query.FolderId))
             {
+                if (Plugin.Instance.Configuration.CollapseVodCategories)
+                {
+                    return await GetAllStreams(cancellationToken).ConfigureAwait(false);
+                }
+
                 return await GetCategories(cancellationToken).ConfigureAwait(false);
             }
 
@@ -167,6 +181,23 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
             TotalRecordCount = items.Count
         };
         return result;
+    }
+
+    private async Task<ChannelItemResult> GetAllStreams(CancellationToken cancellationToken)
+    {
+        IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetVodCategories(cancellationToken).ConfigureAwait(false);
+        List<ChannelItemInfo> items = [];
+        foreach (Category category in categories)
+        {
+            IEnumerable<StreamInfo> streams = await Plugin.Instance.StreamService.GetVodStreams(category.CategoryId, cancellationToken).ConfigureAwait(false);
+            items.AddRange(await Task.WhenAll(streams.Select(CreateChannelItemInfo)).ConfigureAwait(false));
+        }
+
+        return new ChannelItemResult()
+        {
+            Items = items,
+            TotalRecordCount = items.Count
+        };
     }
 
     /// <inheritdoc />

@@ -133,6 +133,11 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     [HttpGet("VodCategories")]
     public async Task<ActionResult<IEnumerable<CategoryResponse>>> GetVodCategories(CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsVodVisible)
+        {
+            return Ok(Enumerable.Empty<CategoryResponse>());
+        }
+
         Plugin plugin = Plugin.Instance;
         List<Category> categories = await xtreamClient.GetVodCategoryAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
         return Ok(categories.Select(CreateCategoryResponse));
@@ -148,6 +153,11 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     [HttpGet("VodCategories/{categoryId}")]
     public async Task<ActionResult<IEnumerable<StreamInfo>>> GetVodStreams(int categoryId, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsVodVisible)
+        {
+            return Ok(Enumerable.Empty<StreamInfo>());
+        }
+
         Plugin plugin = Plugin.Instance;
         List<StreamInfo> streams = await xtreamClient.GetVodStreamsByCategoryAsync(
           plugin.Creds,
@@ -165,6 +175,11 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     [HttpGet("SeriesCategories")]
     public async Task<ActionResult<IEnumerable<CategoryResponse>>> GetSeriesCategories(CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
+        {
+            return Ok(Enumerable.Empty<CategoryResponse>());
+        }
+
         Plugin plugin = Plugin.Instance;
         List<Category> categories = await xtreamClient.GetSeriesCategoryAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
         return Ok(categories.Select(CreateCategoryResponse));
@@ -180,6 +195,11 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     [HttpGet("SeriesCategories/{categoryId}")]
     public async Task<ActionResult<IEnumerable<StreamInfo>>> GetSeriesStreams(int categoryId, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
+        {
+            return Ok(Enumerable.Empty<StreamInfo>());
+        }
+
         Plugin plugin = Plugin.Instance;
         List<Series> series = await xtreamClient.GetSeriesByCategoryAsync(
           plugin.Creds,
@@ -251,61 +271,67 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
                 }
             }
 
-            // Sample VOD categories (max 5)
-            var vodCategories = await xtreamClient.GetVodCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
-            foreach (var category in vodCategories.Take(5))
+            if (Plugin.Instance.Configuration.IsVodVisible)
             {
-                var after = regex.Replace(category.CategoryName, request.Replacement);
-                response.VodCategories.Add(new FilterTestItem
+                // Sample VOD categories (max 5)
+                var vodCategories = await xtreamClient.GetVodCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
+                foreach (var category in vodCategories.Take(5))
                 {
-                    Before = category.CategoryName,
-                    After = after,
-                    Changed = after != category.CategoryName
-                });
-            }
-
-            // Sample VOD items from first category (max 5)
-            if (vodCategories.Count > 0)
-            {
-                var vodStreams = await xtreamClient.GetVodStreamsByCategoryAsync(Plugin.Instance.Creds, vodCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
-                foreach (var stream in vodStreams.Take(5))
-                {
-                    var after = regex.Replace(stream.Name, request.Replacement);
-                    response.VodItems.Add(new FilterTestItem
+                    var after = regex.Replace(category.CategoryName, request.Replacement);
+                    response.VodCategories.Add(new FilterTestItem
                     {
-                        Before = stream.Name,
+                        Before = category.CategoryName,
                         After = after,
-                        Changed = after != stream.Name
+                        Changed = after != category.CategoryName
                     });
+                }
+
+                // Sample VOD items from first category (max 5)
+                if (vodCategories.Count > 0)
+                {
+                    var vodStreams = await xtreamClient.GetVodStreamsByCategoryAsync(Plugin.Instance.Creds, vodCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
+                    foreach (var stream in vodStreams.Take(5))
+                    {
+                        var after = regex.Replace(stream.Name, request.Replacement);
+                        response.VodItems.Add(new FilterTestItem
+                        {
+                            Before = stream.Name,
+                            After = after,
+                            Changed = after != stream.Name
+                        });
+                    }
                 }
             }
 
-            // Sample Series categories (max 5)
-            var seriesCategories = await xtreamClient.GetSeriesCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
-            foreach (var category in seriesCategories.Take(5))
+            if (Plugin.Instance.Configuration.IsSeriesVisible)
             {
-                var after = regex.Replace(category.CategoryName, request.Replacement);
-                response.SeriesCategories.Add(new FilterTestItem
+                // Sample Series categories (max 5)
+                var seriesCategories = await xtreamClient.GetSeriesCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
+                foreach (var category in seriesCategories.Take(5))
                 {
-                    Before = category.CategoryName,
-                    After = after,
-                    Changed = after != category.CategoryName
-                });
-            }
-
-            // Sample Series items from first category (max 5)
-            if (seriesCategories.Count > 0)
-            {
-                var series = await xtreamClient.GetSeriesByCategoryAsync(Plugin.Instance.Creds, seriesCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
-                foreach (var s in series.Take(5))
-                {
-                    var after = regex.Replace(s.Name, request.Replacement);
-                    response.SeriesItems.Add(new FilterTestItem
+                    var after = regex.Replace(category.CategoryName, request.Replacement);
+                    response.SeriesCategories.Add(new FilterTestItem
                     {
-                        Before = s.Name,
+                        Before = category.CategoryName,
                         After = after,
-                        Changed = after != s.Name
+                        Changed = after != category.CategoryName
                     });
+                }
+
+                // Sample Series items from first category (max 5)
+                if (seriesCategories.Count > 0)
+                {
+                    var series = await xtreamClient.GetSeriesByCategoryAsync(Plugin.Instance.Creds, seriesCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
+                    foreach (var s in series.Take(5))
+                    {
+                        var after = regex.Replace(s.Name, request.Replacement);
+                        response.SeriesItems.Add(new FilterTestItem
+                        {
+                            Before = s.Name,
+                            After = after,
+                            Changed = after != s.Name
+                        });
+                    }
                 }
             }
         }

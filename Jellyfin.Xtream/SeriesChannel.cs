@@ -90,10 +90,24 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
     /// <inheritdoc />
     public async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
+        {
+            return new ChannelItemResult()
+            {
+                Items = [],
+                TotalRecordCount = 0,
+            };
+        }
+
         try
         {
             if (string.IsNullOrEmpty(query.FolderId))
             {
+                if (Plugin.Instance.Configuration.CollapseSeriesCategories)
+                {
+                    return await GetAllSeries(cancellationToken).ConfigureAwait(false);
+                }
+
                 return await GetCategories(cancellationToken).ConfigureAwait(false);
             }
 
@@ -276,6 +290,23 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
         List<ChannelItemInfo> items = new List<ChannelItemInfo>(
             episodes.Select((Tuple<SeriesStreamInfo, Season?, Episode> tuple) => CreateChannelItemInfo(tuple.Item1, tuple.Item2, tuple.Item3)));
         return new()
+        {
+            Items = items,
+            TotalRecordCount = items.Count
+        };
+    }
+
+    private async Task<ChannelItemResult> GetAllSeries(CancellationToken cancellationToken)
+    {
+        IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
+        List<ChannelItemInfo> items = [];
+        foreach (Category category in categories)
+        {
+            IEnumerable<Series> series = await Plugin.Instance.StreamService.GetSeries(category.CategoryId, cancellationToken).ConfigureAwait(false);
+            items.AddRange(series.Select(CreateChannelItemInfo));
+        }
+
+        return new ChannelItemResult()
         {
             Items = items,
             TotalRecordCount = items.Count

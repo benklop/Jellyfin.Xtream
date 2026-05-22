@@ -77,6 +77,16 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool IsTmdbSeriesOverride { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether to collapse all VOD categories into a flat list.
+    /// </summary>
+    public bool CollapseVodCategories { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to collapse all Series categories into a flat list.
+    /// </summary>
+    public bool CollapseSeriesCategories { get; set; }
+
+    /// <summary>
     /// Gets or sets the channels displayed in Live TV.
     /// </summary>
     public SerializableDictionary<int, HashSet<int>> LiveTv { get; set; } = [];

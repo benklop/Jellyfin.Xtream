@@ -72,7 +72,9 @@ export default function (view) {
       view.querySelector('#Username').value = config.Username;
       view.querySelector('#Password').value = config.Password;
       view.querySelector('#UserAgent').value = config.UserAgent;
-      
+      view.querySelector('#VodVisible').checked = config.IsVodVisible;
+      view.querySelector('#SeriesVisible').checked = config.IsSeriesVisible;
+
       // Initialize Credentials array if it doesn't exist
       if (!config.Credentials) {
         config.Credentials = [];
@@ -142,7 +144,9 @@ export default function (view) {
           config.Username = view.querySelector('#Username').value;
           config.Password = view.querySelector('#Password').value;
           config.UserAgent = view.querySelector('#UserAgent').value;
-          
+          config.IsVodVisible = view.querySelector('#VodVisible').checked;
+          config.IsSeriesVisible = view.querySelector('#SeriesVisible').checked;
+
           // Collect additional credentials data
           const credsList = view.querySelector('#AdditionalCredentialsList');
           config.Credentials = [];
