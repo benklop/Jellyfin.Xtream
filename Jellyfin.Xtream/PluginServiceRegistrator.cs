@@ -32,12 +32,14 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
         serviceCollection.AddSingleton<ConnectionPool>();
+        serviceCollection.AddSingleton<Service.NameFilterService>();
         serviceCollection.AddSingleton<IXtreamClient, XtreamClient>();
         serviceCollection.AddSingleton<ILiveTvService, LiveTvService>();
         serviceCollection.AddSingleton<IChannel, CatchupChannel>();
         serviceCollection.AddSingleton<IChannel, SeriesChannel>();
         serviceCollection.AddSingleton<IChannel, VodChannel>();
         serviceCollection.AddSingleton<IPreRefreshProvider, XtreamVodProvider>();
+        serviceCollection.AddSingleton<IPreRefreshProvider, XtreamSeriesProvider>();
         serviceCollection.AddSingleton<IScheduledTask, Service.MetadataRefreshTask>();
     }
 }

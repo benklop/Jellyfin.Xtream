@@ -45,6 +45,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <param name="taskManager">Instance of the <see cref="ITaskManager"/> interface.</param>
     /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
     /// <param name="connectionPool">Instance of the <see cref="ConnectionPool"/> class.</param>
+    /// <param name="nameFilterService">Instance of the <see cref="Service.NameFilterService"/> class.</param>
     /// <param name="logger">Instance of the <see cref="ILogger{Plugin}"/> interface.</param>
     public Plugin(
         IApplicationPaths applicationPaths,
@@ -52,6 +53,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         ITaskManager taskManager,
         IXtreamClient xtreamClient,
         ConnectionPool connectionPool,
+        Service.NameFilterService nameFilterService,
         ILogger<Plugin> logger)
         : base(applicationPaths, xmlSerializer)
     {
@@ -63,7 +65,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             client.UpdateUserAgent();
         }
 
-        StreamService = new(xtreamClient);
+        StreamService = new(xtreamClient, nameFilterService);
         TaskService = new(taskManager);
 
         logger.LogInformation("Plugin initialized with connection pool support");
@@ -130,6 +132,8 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             CreateStatic("XtreamLive.js"),
             CreateStatic("XtreamLiveOverrides.html"),
             CreateStatic("XtreamLiveOverrides.js"),
+            CreateStatic("XtreamNameFilters.html"),
+            CreateStatic("XtreamNameFilters.js"),
             CreateStatic("XtreamSeries.html"),
             CreateStatic("XtreamSeries.js"),
             CreateStatic("XtreamVod.html"),

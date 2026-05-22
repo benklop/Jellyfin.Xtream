@@ -1,4 +1,6 @@
 export default function (view) {
+  let currentConfig = null;
+
   view.addEventListener("viewshow", () => import(
     window.ApiClient.getUrl("web/ConfigurationPage", {
       name: "Xtream.js",
@@ -7,8 +9,6 @@ export default function (view) {
   ).then((Xtream) => {
     const pluginId = Xtream.pluginConfig.UniqueId;
     Xtream.setTabs(0);
-
-    let currentConfig = null;
 
     const renderAdditionalCredentials = (credentials) => {
       const container = view.querySelector('#AdditionalCredentialsList');
@@ -64,14 +64,17 @@ export default function (view) {
       });
     };
 
-    Dashboard.showLoadingMsg();
-    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+    const loadConfig = async () => {
+      Dashboard.showLoadingMsg();
+      const config = await ApiClient.getPluginConfiguration(pluginId);
       currentConfig = config;
       view.querySelector('#BaseUrl').value = config.BaseUrl;
       view.querySelector('#Username').value = config.Username;
       view.querySelector('#Password').value = config.Password;
       view.querySelector('#UserAgent').value = config.UserAgent;
-      
+      view.querySelector('#VodVisible').checked = config.IsVodVisible;
+      view.querySelector('#SeriesVisible').checked = config.IsSeriesVisible;
+
       // Initialize Credentials array if it doesn't exist
       if (!config.Credentials) {
         config.Credentials = [];
@@ -79,7 +82,7 @@ export default function (view) {
       
       renderAdditionalCredentials(config.Credentials);
       Dashboard.hideLoadingMsg();
-    });
+    };
 
     const reloadStatus = () => {
       const status = view.querySelector("#ProviderStatus");
@@ -108,63 +111,73 @@ export default function (view) {
         mpegTs.innerText = "";
       });
     };
-    reloadStatus();
 
-    view.querySelector('#AddCredential').addEventListener('click', () => {
-      if (!currentConfig.Credentials) {
-        currentConfig.Credentials = [];
-      }
-      currentConfig.Credentials.push({
-        Username: '',
-        Password: '',
-        Label: '',
-        IsEnabled: true
+    const form = view.querySelector('#XtreamCredentialsForm');
+    if (!form.dataset.listenerAttached) {
+      loadConfig().then(() => {
+        reloadStatus();
       });
-      renderAdditionalCredentials(currentConfig.Credentials);
-    });
 
-    view.querySelector('#UserAgentFromBrowser').addEventListener('click', (e) => {
-      e.preventDefault();
-      view.querySelector('#UserAgent').value = navigator.userAgent;
-    });
+      view.querySelector('#AddCredential').addEventListener('click', () => {
+        if (!currentConfig.Credentials) {
+          currentConfig.Credentials = [];
+        }
+        currentConfig.Credentials.push({
+          Username: '',
+          Password: '',
+          Label: '',
+          IsEnabled: true
+        });
+        renderAdditionalCredentials(currentConfig.Credentials);
+      });
 
-    view.querySelector('#XtreamCredentialsForm').addEventListener('submit', (e) => {
-      Dashboard.showLoadingMsg();
+      view.querySelector('#UserAgentFromBrowser').addEventListener('click', (e) => {
+        e.preventDefault();
+        view.querySelector('#UserAgent').value = navigator.userAgent;
+      });
 
-      ApiClient.getPluginConfiguration(pluginId).then((config) => {
-        config.BaseUrl = view.querySelector('#BaseUrl').value;
-        config.Username = view.querySelector('#Username').value;
-        config.Password = view.querySelector('#Password').value;
-        config.UserAgent = view.querySelector('#UserAgent').value;
-        
-        // Collect additional credentials data
-        const credsList = view.querySelector('#AdditionalCredentialsList');
-        config.Credentials = [];
-        
-        credsList.querySelectorAll('.cred-username').forEach((usernameInput, index) => {
-          const passwordInput = credsList.querySelector(`.cred-password[data-index="${index}"]`);
-          const labelInput = credsList.querySelector(`.cred-label[data-index="${index}"]`);
-          const enabledInput = credsList.querySelector(`.cred-enabled[data-index="${index}"]`);
+      form.addEventListener('submit', (e) => {
+        Dashboard.showLoadingMsg();
+
+        ApiClient.getPluginConfiguration(pluginId).then((config) => {
+          config.BaseUrl = view.querySelector('#BaseUrl').value;
+          config.Username = view.querySelector('#Username').value;
+          config.Password = view.querySelector('#Password').value;
+          config.UserAgent = view.querySelector('#UserAgent').value;
+          config.IsVodVisible = view.querySelector('#VodVisible').checked;
+          config.IsSeriesVisible = view.querySelector('#SeriesVisible').checked;
+
+          // Collect additional credentials data
+          const credsList = view.querySelector('#AdditionalCredentialsList');
+          config.Credentials = [];
           
-          if (usernameInput && passwordInput) {
-            config.Credentials.push({
-              Username: usernameInput.value,
-              Password: passwordInput.value,
-              Label: labelInput ? labelInput.value : '',
-              IsEnabled: enabledInput ? enabledInput.checked : true
-            });
-          }
+          credsList.querySelectorAll('.cred-username').forEach((usernameInput, index) => {
+            const passwordInput = credsList.querySelector(`.cred-password[data-index="${index}"]`);
+            const labelInput = credsList.querySelector(`.cred-label[data-index="${index}"]`);
+            const enabledInput = credsList.querySelector(`.cred-enabled[data-index="${index}"]`);
+            
+            if (usernameInput && passwordInput) {
+              config.Credentials.push({
+                Username: usernameInput.value,
+                Password: passwordInput.value,
+                Label: labelInput ? labelInput.value : '',
+                IsEnabled: enabledInput ? enabledInput.checked : true
+              });
+            }
+          });
+          
+          ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
+            currentConfig = config;
+            reloadStatus();
+            Dashboard.processPluginConfigurationUpdateResult(result);
+          });
         });
-        
-        ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
-          currentConfig = config;
-          reloadStatus();
-          Dashboard.processPluginConfigurationUpdateResult(result);
-        });
+
+        e.preventDefault();
+        return false;
       });
 
-      e.preventDefault();
-      return false;
-    });
+      form.dataset.listenerAttached = 'true';
+    }
   }));
 }

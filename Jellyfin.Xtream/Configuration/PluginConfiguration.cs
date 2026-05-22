@@ -42,7 +42,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>
     /// Gets or sets the list of additional credentials for load balancing.
     /// </summary>
-    public IList<CredentialInfo> Credentials { get; set; } = [];
+#pragma warning disable CA1002 // XML serialization requires List<T>
+    public List<CredentialInfo> Credentials { get; set; } = [];
+#pragma warning restore CA1002
 
     /// <summary>
     /// Gets or sets the user agent override.
@@ -70,6 +72,21 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool IsTmdbVodOverride { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the Series channel should override metadata with TMDB.
+    /// </summary>
+    public bool IsTmdbSeriesOverride { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to collapse all VOD categories into a flat list.
+    /// </summary>
+    public bool CollapseVodCategories { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to collapse all Series categories into a flat list.
+    /// </summary>
+    public bool CollapseSeriesCategories { get; set; }
+
+    /// <summary>
     /// Gets or sets the channels displayed in Live TV.
     /// </summary>
     public SerializableDictionary<int, HashSet<int>> LiveTv { get; set; } = [];
@@ -88,5 +105,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the channel override configuration for Live TV.
     /// </summary>
     public SerializableDictionary<int, ChannelOverrides> LiveTvOverrides { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the list of name filters for cleaning channel and group names.
+    /// </summary>
+#pragma warning disable CA1002 // XML serialization requires List<T>
+    public List<NameFilter> NameFilters { get; set; } = [];
+#pragma warning restore CA1002
 }
 #pragma warning restore CA2227

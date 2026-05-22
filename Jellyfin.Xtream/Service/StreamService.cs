@@ -34,7 +34,8 @@ namespace Jellyfin.Xtream.Service;
 /// A service for dealing with stream information.
 /// </summary>
 /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
-public partial class StreamService(IXtreamClient xtreamClient)
+/// <param name="nameFilterService">Instance of the <see cref="NameFilterService"/> class.</param>
+public partial class StreamService(IXtreamClient xtreamClient, NameFilterService nameFilterService)
 {
     /// <summary>
     /// The id prefix for VOD category channel items.
@@ -104,14 +105,20 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// Supports Unicode pipe variants (│, ┃, ｜) in addition to ASCII pipe.
     /// These tags are parsed and returned as separate strings.
     /// The returned title is cleaned from tags and trimmed.
+    /// Name filters from configuration are applied before tag parsing.
     /// </summary>
     /// <param name="name">The name which should be parsed.</param>
+    /// <param name="scope">The scope where the name filter is being applied.</param>
     /// <returns>A <see cref="ParsedName"/> struct containing the cleaned title and parsed tags.</returns>
-    public static ParsedName ParseName(string name)
+    public ParsedName ParseName(string name, FilterScope scope)
     {
+        // Apply name filters first
+        var config = Plugin.Instance.Configuration;
+        string filteredName = nameFilterService.ApplyFilters(name, config.NameFilters, scope);
+
         List<string> tags = [];
         string title = _tagRegex.Replace(
-            name,
+            filteredName,
             (match) =>
             {
                 for (int i = 1; i < match.Groups.Count; ++i)
@@ -191,9 +198,9 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <param name="prefix">The channel category prefix.</param>
     /// <param name="category">The Xtream category.</param>
     /// <returns>A channel item representing the category.</returns>
-    public static ChannelItemInfo CreateChannelItemInfo(int prefix, Category category)
+    public ChannelItemInfo CreateChannelItemInfo(int prefix, Category category)
     {
-        ParsedName parsedName = ParseName(category.CategoryName);
+        ParsedName parsedName = ParseName(category.CategoryName, FilterScope.LiveTvCategory);
         return new ChannelItemInfo()
         {
             Id = ToGuid(prefix, category.CategoryId, 0, 0).ToString(),
@@ -210,6 +217,11 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <returns>IAsyncEnumerable{StreamInfo}.</returns>
     public async Task<IEnumerable<Category>> GetVodCategories(CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsVodVisible)
+        {
+            return [];
+        }
+
         List<Category> categories = await xtreamClient.GetVodCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
         return categories.Where((Category category) => Plugin.Instance.Configuration.Vod.ContainsKey(category.CategoryId));
     }
@@ -222,6 +234,11 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <returns>IAsyncEnumerable{StreamInfo}.</returns>
     public async Task<IEnumerable<StreamInfo>> GetVodStreams(int categoryId, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsVodVisible)
+        {
+            return [];
+        }
+
         if (!Plugin.Instance.Configuration.Vod.ContainsKey(categoryId))
         {
             return new List<StreamInfo>();
@@ -238,6 +255,11 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <returns>IAsyncEnumerable{StreamInfo}.</returns>
     public async Task<IEnumerable<Category>> GetSeriesCategories(CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
+        {
+            return [];
+        }
+
         List<Category> categories = await xtreamClient.GetSeriesCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
         return categories.Where((Category category) => Plugin.Instance.Configuration.Series.ContainsKey(category.CategoryId));
     }
@@ -250,6 +272,11 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <returns>IAsyncEnumerable{StreamInfo}.</returns>
     public async Task<IEnumerable<Series>> GetSeries(int categoryId, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
+        {
+            return [];
+        }
+
         if (!Plugin.Instance.Configuration.Series.ContainsKey(categoryId))
         {
             return new List<Series>();
@@ -267,6 +294,11 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <returns>IAsyncEnumerable{StreamInfo}.</returns>
     public async Task<IEnumerable<Tuple<SeriesStreamInfo, int>>> GetSeasons(int seriesId, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
+        {
+            return [];
+        }
+
         SeriesStreamInfo series = await xtreamClient.GetSeriesStreamsBySeriesAsync(Plugin.Instance.Creds, seriesId, cancellationToken).ConfigureAwait(false);
         int categoryId = series.Info.CategoryId;
         if (!IsConfigured(Plugin.Instance.Configuration.Series, categoryId, seriesId))
@@ -286,6 +318,11 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <returns>IAsyncEnumerable{StreamInfo}.</returns>
     public async Task<IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>>> GetEpisodes(int seriesId, int seasonId, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
+        {
+            return [];
+        }
+
         SeriesStreamInfo series = await xtreamClient.GetSeriesStreamsBySeriesAsync(Plugin.Instance.Creds, seriesId, cancellationToken).ConfigureAwait(false);
         Season? season = series.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
         return series.Episodes[seasonId].Select((Episode episode) => new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));

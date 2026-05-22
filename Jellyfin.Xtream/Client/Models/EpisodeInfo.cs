@@ -28,6 +28,7 @@ public class EpisodeInfo
     public string? Plot { get; set; }
 
     [JsonProperty("releasedate")]
+    [JsonConverter(typeof(LenientDateTimeConverter))]
     public DateTime? ReleaseDate { get; set; }
 
     [JsonProperty("rating")]

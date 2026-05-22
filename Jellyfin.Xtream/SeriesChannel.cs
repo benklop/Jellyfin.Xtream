@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -89,10 +90,24 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
     /// <inheritdoc />
     public async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
     {
+        if (!Plugin.Instance.Configuration.IsSeriesVisible)
+        {
+            return new ChannelItemResult()
+            {
+                Items = [],
+                TotalRecordCount = 0,
+            };
+        }
+
         try
         {
             if (string.IsNullOrEmpty(query.FolderId))
             {
+                if (Plugin.Instance.Configuration.CollapseSeriesCategories)
+                {
+                    return await GetAllSeries(cancellationToken).ConfigureAwait(false);
+                }
+
                 return await GetCategories(cancellationToken).ConfigureAwait(false);
             }
 
@@ -127,11 +142,11 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private ChannelItemInfo CreateChannelItemInfo(Series series)
     {
-        ParsedName parsedName = StreamService.ParseName(series.Name);
+        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(series.Name, FilterScope.SeriesItem);
         return new ChannelItemInfo()
         {
             CommunityRating = (float)series.Rating5Based,
-            DateModified = series.LastModified,
+            DateModified = series.LastModified ?? DateTime.UtcNow,
             FolderType = ChannelFolderType.Series,
             Genres = GetGenres(series.Genre),
             Id = StreamService.ToGuid(StreamService.SeriesPrefix, series.CategoryId, series.SeriesId, 0).ToString(),
@@ -139,6 +154,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
             Name = parsedName.Title,
             SeriesName = parsedName.Title,
             People = GetPeople(series.Cast),
+            ProviderIds = { { Providers.XtreamSeriesProvider.ProviderName, series.SeriesId.ToString(CultureInfo.InvariantCulture) } },
             Tags = new List<string>(parsedName.Tags),
             Type = ChannelItemType.Folder,
         };
@@ -169,7 +185,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
         Season? season = series.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
         if (season != null)
         {
-            ParsedName parsedName = StreamService.ParseName(season.Name);
+            ParsedName parsedName = Plugin.Instance.StreamService.ParseName(season.Name, FilterScope.SeriesItem);
             name = parsedName.Title;
             tags.AddRange(parsedName.Tags);
             created = season.AirDate;
@@ -198,7 +214,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
     private ChannelItemInfo CreateChannelItemInfo(SeriesStreamInfo series, Season? season, Episode episode)
     {
         Client.Models.SeriesInfo serie = series.Info;
-        ParsedName parsedName = StreamService.ParseName(episode.Title);
+        ParsedName parsedName = Plugin.Instance.StreamService.ParseName(episode.Title, FilterScope.SeriesItem);
         List<MediaSourceInfo> sources =
         [
             Plugin.Instance.StreamService.GetMediaSourceInfo(
@@ -237,7 +253,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
     {
         IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
         List<ChannelItemInfo> items = new(
-            categories.Select((Category category) => StreamService.CreateChannelItemInfo(StreamService.SeriesCategoryPrefix, category)));
+            categories.Select((Category category) => Plugin.Instance.StreamService.CreateChannelItemInfo(StreamService.SeriesCategoryPrefix, category)));
         return new()
         {
             Items = items,
@@ -274,6 +290,23 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
         List<ChannelItemInfo> items = new List<ChannelItemInfo>(
             episodes.Select((Tuple<SeriesStreamInfo, Season?, Episode> tuple) => CreateChannelItemInfo(tuple.Item1, tuple.Item2, tuple.Item3)));
         return new()
+        {
+            Items = items,
+            TotalRecordCount = items.Count
+        };
+    }
+
+    private async Task<ChannelItemResult> GetAllSeries(CancellationToken cancellationToken)
+    {
+        IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
+        List<ChannelItemInfo> items = [];
+        foreach (Category category in categories)
+        {
+            IEnumerable<Series> series = await Plugin.Instance.StreamService.GetSeries(category.CategoryId, cancellationToken).ConfigureAwait(false);
+            items.AddRange(series.Select(CreateChannelItemInfo));
+        }
+
+        return new ChannelItemResult()
         {
             Items = items,
             TotalRecordCount = items.Count

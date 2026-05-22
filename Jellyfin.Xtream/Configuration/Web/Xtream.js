@@ -158,6 +158,9 @@ const populateCategoriesTable = (table, loadConfig, loadCategories, loadItems) =
 
   return Promise.all([fetchConfig, fetchCategories])
     .then(([config, categories]) => {
+      // Clear existing table content before populating
+      table.innerHTML = '';
+      
       const data = config;
       for (let i = 0; i < categories.length; ++i) {
         const category = categories[i];
@@ -197,6 +200,10 @@ const tabs = [
   {
     href: tab('XtreamLiveOverrides'),
     name: 'TV overrides'
+  },
+  {
+    href: tab('XtreamNameFilters'),
+    name: 'Name Filters'
   },
   {
     href: tab('XtreamVod'),
