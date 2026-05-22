@@ -46,7 +46,14 @@ public static class XmlTvParser
             return dt.ToUniversalTime();
         }
 
-        return DateTime.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+        try
+        {
+            return DateTime.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+        }
+        catch (FormatException)
+        {
+            return DateTime.MinValue;
+        }
     }
 
     /// <summary>
