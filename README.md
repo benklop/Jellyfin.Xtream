@@ -20,7 +20,7 @@ This repository is an **independent fork** maintained by the [klopstack](https:/
 3. Save, then open **Plugins** → **Catalog** → **Live TV** → **Jellyfin Xtream**.
 4. Install the desired version and **restart Jellyfin**.
 
-> **Note:** Enable [GitHub Pages](https://github.com/klopstack/Jellyfin.Xtream/settings/pages) on this repo (GitHub Actions source) before the catalog URL works. It is populated automatically when you publish a [GitHub Release](https://github.com/klopstack/Jellyfin.Xtream/releases).
+> **Note:** GitHub Pages must deploy the **`gh-pages`** branch (root). The publish workflow updates `repository.json` on that branch when you publish a [GitHub Release](https://github.com/klopstack/Jellyfin.Xtream/releases).
 
 ### Manual install from a release
 

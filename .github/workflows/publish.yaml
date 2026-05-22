@@ -5,6 +5,11 @@ on:
     types:
       - released
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to upload assets to (e.g. v0.9.0). Required for manual runs.'
+        required: true
+        default: 'v0.9.0'
 
 jobs:
   build:
@@ -31,10 +36,20 @@ jobs:
             fi
           done
           ls -l
+      - name: Resolve release upload URL
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |-
+          if [ -n "${{ github.event.release.upload_url }}" ]; then
+            echo "upload_url=${{ github.event.release.upload_url }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "upload_url=$(gh release view "${{ inputs.tag }}" -R "${{ github.repository }}" --json uploadUrl --jq -r .uploadUrl)" >> "$GITHUB_OUTPUT"
+          fi
       - name: Upload GitHub Release assets
         uses: shogo82148/actions-upload-release-asset@v1.9.2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ steps.release.outputs.upload_url }}
           asset_path: ./*
   generate:
     runs-on: ubuntu-latest
