@@ -40,6 +40,11 @@ public class PluginConfiguration : BasePluginConfiguration
     public string Password { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the list of additional credentials for load balancing.
+    /// </summary>
+    public IList<CredentialInfo> Credentials { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets the user agent override.
     /// </summary>
     public string UserAgent { get; set; } = string.Empty;
