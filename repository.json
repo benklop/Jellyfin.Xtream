@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "category": "LiveTV",
+    "description": "Stream Live IPTV, Video On-Demand, and Series from an Xtream-compatible server using this plugin.\n",
+    "guid": "5d774c35-8567-46d3-a950-9bb8227a0c5d",
+    "name": "Jellyfin Xtream",
+    "overview": "Stream content from an Xtream-compatible server.",
+    "owner": "klopstack",
+    "versions": [
+      {
+        "changelog": "## What's Changed\r\n* Add multi-credential support and metadata refresh task by @benklop in https://github.com/klopstack/Jellyfin.Xtream/pull/1\r\n* Bulk-renaming by @benklop in https://github.com/klopstack/Jellyfin.Xtream/pull/2\r\n* Batch fetch epg data 1 by @benklop in https://github.com/klopstack/Jellyfin.Xtream/pull/3\r\n\r\n## New Contributors\r\n* @benklop made their first contribution in https://github.com/klopstack/Jellyfin.Xtream/pull/1\r\n\r\n**Full Changelog**: https://github.com/klopstack/Jellyfin.Xtream/compare/v0.8.2...v0.9.0",
+        "checksum": "7cdf497412fea8ea2124d9c35a4b65e0",
+        "sourceUrl": "https://github.com/klopstack/Jellyfin.Xtream/releases/download/v0.9.0/jellyfin-xtream_0.9.0.0.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-05-22T21:04:10Z",
+        "version": "0.9.0.0"
+      },
+      {
+        "changelog": "",
+        "checksum": "",
+        "sourceUrl": "",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-05-22T21:00:44Z",
+        "version": "0.8.1.0"
+      }
+    ]
+  }
+]
