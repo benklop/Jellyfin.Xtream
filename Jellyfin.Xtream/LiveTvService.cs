@@ -201,33 +201,24 @@ public class LiveTvService(
             if (allStreams?.FirstOrDefault(s => s.StreamId == streamId) != null)
             {
                 XmlTvProgrammeIndex index = await xmlTvEpgService.GetProgrammeIndexAsync(allStreams, cancellationToken).ConfigureAwait(false);
-                var channelMapping = XmlTvValidation.BuildChannelMapping(allStreams);
+                IReadOnlyList<XmlTvProgramme> progs = XmlTvChannelMapper.GetProgrammesForStream(
+                    streamId,
+                    index.StreamToChannelIds,
+                    index.ProgrammesByChannelId,
+                    logger);
+
                 int localId = 1;
-
-                foreach (var kvp in channelMapping)
+                foreach (var p in progs)
                 {
-                    if (!kvp.Value.Contains(streamId))
+                    items.Add(new ProgramInfo
                     {
-                        continue;
-                    }
-
-                    if (!index.ProgrammesByChannelId.TryGetValue(kvp.Key, out var progsForChannel))
-                    {
-                        continue;
-                    }
-
-                    foreach (var p in progsForChannel)
-                    {
-                        items.Add(new ProgramInfo
-                        {
-                            Id = StreamService.ToGuid(StreamService.EpgPrefix, streamId, localId++, 0).ToString(),
-                            ChannelId = channelId,
-                            StartDate = p.Start,
-                            EndDate = p.End,
-                            Name = p.Title,
-                            Overview = p.Description,
-                        });
-                    }
+                        Id = StreamService.ToGuid(StreamService.EpgPrefix, streamId, localId++, 0).ToString(),
+                        ChannelId = channelId,
+                        StartDate = p.Start,
+                        EndDate = p.End,
+                        Name = p.Title,
+                        Overview = p.Description,
+                    });
                 }
             }
         }

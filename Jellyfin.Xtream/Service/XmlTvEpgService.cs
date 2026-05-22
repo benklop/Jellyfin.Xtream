@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -126,43 +125,15 @@ public class XmlTvEpgService
             return Array.Empty<XmlTvProgramme>();
         }
 
-        var channelMapping = XmlTvValidation.BuildChannelMapping(streams);
-        var results = new List<XmlTvProgramme>();
-        var seen = new HashSet<(DateTime Start, DateTime End, string Title)>();
+        IReadOnlyList<XmlTvProgramme> all = XmlTvChannelMapper.GetProgrammesForStream(
+            streamId,
+            index.StreamToChannelIds,
+            index.ProgrammesByChannelId,
+            _logger);
 
-        foreach (var kvp in channelMapping)
-        {
-            if (!kvp.Value.Contains(streamId))
-            {
-                continue;
-            }
-
-            if (!index.ProgrammesByChannelId.TryGetValue(kvp.Key, out var progs))
-            {
-                continue;
-            }
-
-            foreach (var p in progs)
-            {
-                if (p.End < startUtc || p.Start >= endUtc)
-                {
-                    continue;
-                }
-
-                var key = (p.Start, p.End, p.Title);
-                if (seen.Add(key))
-                {
-                    results.Add(p);
-                }
-            }
-        }
-
-        if (results.Count == 0)
-        {
-            _logger.LogWarning("No XMLTV programmes matched streamId {StreamId} in the requested window", streamId);
-        }
-
-        return results;
+        return all
+            .Where(p => p.End >= startUtc && p.Start < endUtc)
+            .ToList();
     }
 
     private async Task<XmlTvProgrammeIndex> LoadProgrammeIndexAsync(
@@ -181,7 +152,8 @@ public class XmlTvEpgService
             }
 
             var doc = XDocument.Parse(xml);
-            var programmesByChannel = ParseProgrammes(doc);
+            var programmesByChannel = XmlTvParser.ParseProgrammes(doc);
+            var streamToChannelIds = XmlTvChannelMapper.BuildStreamToXmlTvChannelIds(streams, doc);
             string? warning = XmlTvValidation.LogHistoricalDepthWarning(programmesByChannel, requiredDays, _logger);
 
             if (programmesByChannel.Count == 0)
@@ -193,6 +165,7 @@ public class XmlTvEpgService
             return new XmlTvProgrammeIndex
             {
                 ProgrammesByChannelId = programmesByChannel,
+                StreamToChannelIds = streamToChannelIds,
                 LoadSucceeded = true,
                 WarningMessage = warning,
             };
@@ -252,84 +225,5 @@ public class XmlTvEpgService
         }
 
         return xml;
-    }
-
-    private Dictionary<string, List<XmlTvProgramme>> ParseProgrammes(XDocument doc)
-    {
-        var mapping = new Dictionary<string, List<XmlTvProgramme>>(StringComparer.Ordinal);
-
-        foreach (var prog in doc.Descendants("programme"))
-        {
-            string? ch = prog.Attribute("channel")?.Value;
-            if (string.IsNullOrEmpty(ch))
-            {
-                continue;
-            }
-
-            string? startRaw = prog.Attribute("start")?.Value;
-            string? stopRaw = prog.Attribute("stop")?.Value;
-            if (string.IsNullOrEmpty(startRaw) || string.IsNullOrEmpty(stopRaw))
-            {
-                continue;
-            }
-
-            try
-            {
-                DateTime start = ParseXmlTvDate(startRaw);
-                DateTime stop = ParseXmlTvDate(stopRaw);
-                if (start == DateTime.MinValue || stop == DateTime.MinValue || start >= stop)
-                {
-                    continue;
-                }
-
-                string title = prog.Element("title")?.Value ?? string.Empty;
-                string desc = prog.Element("desc")?.Value ?? string.Empty;
-
-                if (!mapping.TryGetValue(ch, out var list))
-                {
-                    list = new List<XmlTvProgramme>();
-                    mapping[ch] = list;
-                }
-
-                list.Add(new XmlTvProgramme(start, stop, title, desc));
-            }
-            catch
-            {
-                // Skip programmes with unparseable dates
-            }
-        }
-
-        return mapping;
-    }
-
-    private static DateTime ParseXmlTvDate(string raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return DateTime.MinValue;
-        }
-
-        string s = raw.Replace(" ", string.Empty, StringComparison.Ordinal);
-        if (s.Length > 14)
-        {
-            string zone = s[^5..];
-            if ((zone[0] == '+' || zone[0] == '-') && int.TryParse(zone.AsSpan(1), out _))
-            {
-                string zoneWithColon = zone.Insert(3, ":");
-                s = s[..^5] + zoneWithColon;
-            }
-        }
-
-        if (DateTime.TryParseExact(
-                s,
-                "yyyyMMddHHmmsszzz",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
-                out var dt))
-        {
-            return dt.ToUniversalTime();
-        }
-
-        return DateTime.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
     }
 }

@@ -15,6 +15,11 @@ public sealed class XmlTvProgrammeIndex
     public Dictionary<string, List<XmlTvProgramme>> ProgrammesByChannelId { get; init; } = [];
 
     /// <summary>
+    /// Gets XMLTV channel id aliases per stream id.
+    /// </summary>
+    public Dictionary<int, List<string>> StreamToChannelIds { get; init; } = [];
+
+    /// <summary>
     /// Gets a value indicating whether the feed was loaded and parsed successfully.
     /// </summary>
     public bool LoadSucceeded { get; init; }

@@ -92,7 +92,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <summary>
     /// Gets the data version used to trigger a cache invalidation on plugin update or config change.
     /// </summary>
-    public string DataVersion => Assembly.GetCallingAssembly().GetName().Version?.ToString() + Configuration.GetHashCode();
+    public string DataVersion => typeof(Plugin).Assembly.GetName().Version?.ToString() + Configuration.GetHashCode();
 
     /// <summary>
     /// Gets the current plugin instance.

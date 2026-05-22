@@ -94,31 +94,4 @@ public static class XmlTvValidation
 
         return path;
     }
-
-    /// <summary>
-    /// Create a mapping of channel IDs to their EPG identifiers based on stream info.
-    /// </summary>
-    /// <param name="streams">List of stream information.</param>
-    /// <returns>Dictionary mapping EPG channel IDs to lists of stream IDs.</returns>
-    public static Dictionary<string, HashSet<int>> BuildChannelMapping(IEnumerable<Models.StreamInfo> streams)
-    {
-        var mapping = new Dictionary<string, HashSet<int>>();
-        foreach (var stream in streams)
-        {
-            // Use EPG channel ID if available, otherwise use stream ID
-            string epgId = string.IsNullOrWhiteSpace(stream.EpgChannelId)
-                ? stream.StreamId.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                : stream.EpgChannelId;
-
-            if (!mapping.TryGetValue(epgId, out var streamIds))
-            {
-                streamIds = new HashSet<int>();
-                mapping[epgId] = streamIds;
-            }
-
-            streamIds.Add(stream.StreamId);
-        }
-
-        return mapping;
-    }
 }
