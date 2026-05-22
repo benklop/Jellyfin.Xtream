@@ -27,6 +27,7 @@ export default function (view) {
   ).then((Xtream) => Xtream.default
   ).then((Xtream) => {
     Xtream.setTabs(1);
+    Xtream.renderTabLinks(view.querySelector('.tabLinks'), 'XtreamLive');
 
     // Only populate if not already populated
     const populatePromise = isPopulated ? Promise.resolve(currentData) : populate(Xtream);
@@ -52,6 +53,7 @@ export default function (view) {
             config.IsCatchupVisible = visible.checked;
             config.LiveTv = currentData;
             ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
+              Xtream.logConfigurationChange('Live TV');
               Dashboard.processPluginConfigurationUpdateResult(result);
             });
           });

@@ -9,6 +9,7 @@ export default function (view) {
   ).then((Xtream) => {
     const pluginId = Xtream.pluginConfig.UniqueId;
     Xtream.setTabs(0);
+    Xtream.renderTabLinks(view.querySelector('.tabLinks'), 'XtreamCredentials');
 
     const renderAdditionalCredentials = (credentials) => {
       const container = view.querySelector('#AdditionalCredentialsList');
@@ -72,6 +73,7 @@ export default function (view) {
       view.querySelector('#Username').value = config.Username;
       view.querySelector('#Password').value = config.Password;
       view.querySelector('#UserAgent').value = config.UserAgent;
+      view.querySelector('#CatchupUrlFormat').value = config.CatchupUrlFormat || '{0}/streaming/timeshift.php?username={1}&password={2}&stream={3}&start={4}&duration={5}';
       view.querySelector('#VodVisible').checked = config.IsVodVisible;
       view.querySelector('#SeriesVisible').checked = config.IsSeriesVisible;
 
@@ -79,7 +81,7 @@ export default function (view) {
       if (!config.Credentials) {
         config.Credentials = [];
       }
-      
+
       renderAdditionalCredentials(config.Credentials);
       Dashboard.hideLoadingMsg();
     };
@@ -144,18 +146,19 @@ export default function (view) {
           config.Username = view.querySelector('#Username').value;
           config.Password = view.querySelector('#Password').value;
           config.UserAgent = view.querySelector('#UserAgent').value;
+          config.CatchupUrlFormat = view.querySelector('#CatchupUrlFormat').value;
           config.IsVodVisible = view.querySelector('#VodVisible').checked;
           config.IsSeriesVisible = view.querySelector('#SeriesVisible').checked;
 
           // Collect additional credentials data
           const credsList = view.querySelector('#AdditionalCredentialsList');
           config.Credentials = [];
-          
+
           credsList.querySelectorAll('.cred-username').forEach((usernameInput, index) => {
             const passwordInput = credsList.querySelector(`.cred-password[data-index="${index}"]`);
             const labelInput = credsList.querySelector(`.cred-label[data-index="${index}"]`);
             const enabledInput = credsList.querySelector(`.cred-enabled[data-index="${index}"]`);
-            
+
             if (usernameInput && passwordInput) {
               config.Credentials.push({
                 Username: usernameInput.value,
@@ -165,10 +168,11 @@ export default function (view) {
               });
             }
           });
-          
+
           ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
             currentConfig = config;
             reloadStatus();
+            Xtream.logConfigurationChange('Credentials');
             Dashboard.processPluginConfigurationUpdateResult(result);
           });
         });

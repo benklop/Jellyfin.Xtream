@@ -43,8 +43,17 @@ namespace Jellyfin.Xtream;
 /// <param name="logger">Instance of the <see cref="ILogger"/> interface.</param>
 /// <param name="memoryCache">Instance of the <see cref="IMemoryCache"/> interface.</param>
 /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
-public class LiveTvService(IServerApplicationHost appHost, IHttpClientFactory httpClientFactory, ILogger<LiveTvService> logger, IMemoryCache memoryCache, IXtreamClient xtreamClient) : ILiveTvService, ISupportsDirectStreamProvider
+/// <param name="xmlTvEpgService">Instance of the <see cref="XmlTvEpgService"/> class.</param>
+public class LiveTvService(
+    IServerApplicationHost appHost,
+    IHttpClientFactory httpClientFactory,
+    ILogger<LiveTvService> logger,
+    IMemoryCache memoryCache,
+    IXtreamClient xtreamClient,
+    XmlTvEpgService xmlTvEpgService) : ILiveTvService, ISupportsDirectStreamProvider
 {
+    private const int EmptyChannelCacheMinutes = 5;
+
     /// <inheritdoc />
     public string Name => "Xtream Live";
 
@@ -55,7 +64,7 @@ public class LiveTvService(IServerApplicationHost appHost, IHttpClientFactory ht
     public async Task<IEnumerable<ChannelInfo>> GetChannelsAsync(CancellationToken cancellationToken)
     {
         Plugin plugin = Plugin.Instance;
-        List<ChannelInfo> items = [];
+        List<ChannelInfo> items = new List<ChannelInfo>();
         foreach (StreamInfo channel in await plugin.StreamService.GetLiveStreamsWithOverrides(cancellationToken).ConfigureAwait(false))
         {
             ParsedName parsed = plugin.StreamService.ParseName(channel.Name, FilterScope.LiveTvItem);
@@ -124,7 +133,7 @@ public class LiveTvService(IServerApplicationHost appHost, IHttpClientFactory ht
     public async Task<List<MediaSourceInfo>> GetChannelStreamMediaSources(string channelId, CancellationToken cancellationToken)
     {
         MediaSourceInfo source = await GetChannelStream(channelId, string.Empty, cancellationToken).ConfigureAwait(false);
-        return [source];
+        return new List<MediaSourceInfo> { source };
     }
 
     /// <inheritdoc />
@@ -164,38 +173,111 @@ public class LiveTvService(IServerApplicationHost appHost, IHttpClientFactory ht
         }
 
         string key = $"xtream-epg-{channelId}";
-        ICollection<ProgramInfo>? items = null;
-        if (memoryCache.TryGetValue(key, out ICollection<ProgramInfo>? o))
+        if (memoryCache.TryGetValue(key, out ICollection<ProgramInfo>? cached))
         {
-            items = o;
+            return FilterPrograms(cached!, startDateUtc, endDateUtc);
         }
-        else
+
+        var items = new List<ProgramInfo>();
+        Plugin plugin = Plugin.Instance;
+        logger.LogInformation(
+            "GetProgramsAsync for channel {ChannelId}, streamId {StreamId}. UseXmlTv: {UseXmlTv}, XmlTvUrl: '{XmlTvUrl}'",
+            channelId,
+            streamId,
+            plugin.Configuration.UseXmlTv,
+            plugin.Configuration.XmlTvUrl ?? "(default)");
+
+        if (plugin.Configuration.UseXmlTv)
         {
-            items = new List<ProgramInfo>();
-            Plugin plugin = Plugin.Instance;
+            logger.LogInformation("Using XMLTV for EPG data (streamId: {StreamId})", streamId);
+
+            string streamsCacheKey = $"xtream-liveStreams-{plugin.DataVersion}";
+            if (!memoryCache.TryGetValue(streamsCacheKey, out IEnumerable<StreamInfo>? allStreams))
             {
-                EpgListings epgs = await xtreamClient.GetEpgInfoAsync(plugin.Creds, streamId, cancellationToken).ConfigureAwait(false);
-                foreach (EpgInfo epg in epgs.Listings)
+                allStreams = await plugin.StreamService.GetLiveStreams(cancellationToken).ConfigureAwait(false);
+                memoryCache.Set(streamsCacheKey, allStreams, TimeSpan.FromMinutes(plugin.Configuration.XmlTvCacheMinutes));
+            }
+
+            if (allStreams?.FirstOrDefault(s => s.StreamId == streamId) != null)
+            {
+                XmlTvProgrammeIndex index = await xmlTvEpgService.GetProgrammeIndexAsync(allStreams, cancellationToken).ConfigureAwait(false);
+                IReadOnlyList<XmlTvProgramme> progs = XmlTvChannelMapper.GetProgrammesForStream(
+                    streamId,
+                    index.StreamToChannelIds,
+                    index.ProgrammesByChannelId,
+                    logger);
+
+                int localId = 1;
+                foreach (var p in progs)
                 {
-                    items.Add(new()
+                    items.Add(new ProgramInfo
                     {
-                        Id = StreamService.ToGuid(StreamService.EpgPrefix, streamId, epg.Id, 0).ToString(),
+                        Id = StreamService.ToGuid(StreamService.EpgPrefix, streamId, localId++, 0).ToString(),
                         ChannelId = channelId,
-                        StartDate = epg.Start,
-                        EndDate = epg.End,
-                        Name = epg.Title,
-                        Overview = epg.Description,
+                        StartDate = p.Start,
+                        EndDate = p.End,
+                        Name = p.Title,
+                        Overview = p.Description,
                     });
                 }
             }
+        }
+        else
+        {
+            logger.LogDebug("Using per-channel EPG API for streamId: {StreamId}", streamId);
+            try
+            {
+                EpgListings epgs = await xtreamClient.GetEpgInfoAsync(plugin.Creds, streamId, cancellationToken).ConfigureAwait(false);
 
-            memoryCache.Set(key, items, DateTimeOffset.Now.AddMinutes(10));
+                if (epgs?.Listings == null)
+                {
+                    logger.LogWarning("No EPG data returned for streamId: {StreamId}", streamId);
+                }
+                else
+                {
+                    foreach (EpgInfo epg in epgs.Listings)
+                    {
+                        items.Add(new ProgramInfo
+                        {
+                            Id = StreamService.ToGuid(StreamService.EpgPrefix, streamId, epg.Id, 0).ToString(),
+                            ChannelId = channelId,
+                            StartDate = epg.Start,
+                            EndDate = epg.End,
+                            Name = epg.Title,
+                            Overview = epg.Description,
+                        });
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Failed to fetch per-channel EPG for streamId {StreamId}. Status: {StatusCode}",
+                    streamId,
+                    ex.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error fetching EPG for streamId {StreamId}", streamId);
+            }
         }
 
-        return from epg in items
-               where epg.EndDate >= startDateUtc && epg.StartDate < endDateUtc
-               select epg;
+        memoryCache.Set(
+            key,
+            items,
+            DateTimeOffset.Now.AddMinutes(items.Count > 0 ? 30 : EmptyChannelCacheMinutes));
+
+        return FilterPrograms(items, startDateUtc, endDateUtc);
     }
+
+    private static IEnumerable<ProgramInfo> FilterPrograms(
+        ICollection<ProgramInfo> items,
+        DateTime startDateUtc,
+        DateTime endDateUtc) =>
+        from epg in items
+        where epg.EndDate >= startDateUtc && epg.StartDate < endDateUtc
+        select epg;
 
     /// <inheritdoc />
     public Task ResetTuner(string id, CancellationToken cancellationToken)

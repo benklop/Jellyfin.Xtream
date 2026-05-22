@@ -50,6 +50,7 @@ export default function (view) {
   ).then((Xtream) => {
     const pluginId = Xtream.pluginConfig.UniqueId;
     Xtream.setTabs(2);
+    Xtream.renderTabLinks(view.querySelector('.tabLinks'), 'XtreamLiveOverrides');
 
     const getConfig = ApiClient.getPluginConfiguration(pluginId);
     const table = view.querySelector('#LiveChannels');
@@ -76,6 +77,7 @@ export default function (view) {
             overrides => Object.keys(overrides).length > 0
           );
           ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
+            Xtream.logConfigurationChange('TV Overrides');
             Dashboard.processPluginConfigurationUpdateResult(result);
           });
         });

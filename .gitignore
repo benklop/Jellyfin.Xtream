@@ -4,3 +4,5 @@ obj/
 .idea/
 .vscode/
 artifacts
+*.dll
+Jellyfin.Xtream.dll

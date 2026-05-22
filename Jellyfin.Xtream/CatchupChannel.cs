@@ -36,9 +36,11 @@ namespace Jellyfin.Xtream;
 /// </summary>
 /// <param name="logger">Instance of the <see cref="ILogger"/> interface.</param>
 /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
-public class CatchupChannel(ILogger<CatchupChannel> logger, IXtreamClient xtreamClient) : IChannel, IDisableMediaSourceDisplay
+/// <param name="xmlTvEpgService">Instance of the <see cref="XmlTvEpgService"/> class.</param>
+public class CatchupChannel(ILogger<CatchupChannel> logger, IXtreamClient xtreamClient, XmlTvEpgService xmlTvEpgService) : IChannel, IDisableMediaSourceDisplay
 {
     private readonly ILogger<CatchupChannel> _logger = logger;
+    private readonly XmlTvEpgService _xmlTvEpgService = xmlTvEpgService;
 
     /// <inheritdoc />
     public string? Name => "Xtream Catch-up";
@@ -184,67 +186,136 @@ public class CatchupChannel(ILogger<CatchupChannel> logger, IXtreamClient xtream
         List<StreamInfo> streams = await xtreamClient.GetLiveStreamsByCategoryAsync(plugin.Creds, categoryId, cancellationToken).ConfigureAwait(false);
         StreamInfo channel = streams.FirstOrDefault(s => s.StreamId == channelId)
             ?? throw new ArgumentException($"Channel with id {channelId} not found in category {categoryId}");
+
+        if (plugin.Configuration.UseXmlTv)
+        {
+            IEnumerable<StreamInfo> configuredStreams = await plugin.StreamService.GetLiveStreams(cancellationToken).ConfigureAwait(false);
+            IReadOnlyList<XmlTvProgramme> programmes = await _xmlTvEpgService.GetProgrammesForStreamAsync(
+                channelId,
+                configuredStreams,
+                start,
+                end,
+                cancellationToken).ConfigureAwait(false);
+
+            return BuildStreamItemsFromProgrammes(plugin, channel, channelId, day, programmes);
+        }
+
         EpgListings epgs = await xtreamClient.GetEpgInfoAsync(plugin.Creds, channelId, cancellationToken).ConfigureAwait(false);
         List<ChannelItemInfo> items = [];
 
         // Create fallback single-stream catch-up if no EPG is available.
         if (epgs.Listings.Count == 0)
         {
-            int durationMinutes = 24 * 60;
-            return new()
-            {
-                Items = new List<ChannelItemInfo>()
-                    {
-                        new()
-                        {
-                            ContentType = ChannelMediaContentType.TvExtra,
-                            Id = StreamService.ToGuid(StreamService.CatchupStreamPrefix, channelId, 0, day).ToString(),
-                            IsLiveStream = false,
-                            MediaSources = [
-                                plugin.StreamService.GetMediaSourceInfo(StreamType.CatchUp, channelId, start: start, durationMinutes: durationMinutes)
-                            ],
-                            MediaType = ChannelMediaType.Video,
-                            Name = $"No EPG available",
-                            RunTimeTicks = durationMinutes * TimeSpan.TicksPerMinute,
-                            Type = ChannelItemType.Media,
-                        }
-                    },
-                TotalRecordCount = 1
-            };
+            return BuildNoEpgFallback(plugin, channelId, day, start);
         }
 
         foreach (EpgInfo epg in epgs.Listings.Where(epg => epg.Start <= end && epg.End >= start))
         {
-            ParsedName parsedName = plugin.StreamService.ParseName(epg.Title, FilterScope.LiveTvItem);
-            int durationMinutes = (int)Math.Ceiling((epg.End - epg.Start).TotalMinutes);
-            string dateTitle = epg.Start.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture);
-            List<MediaSourceInfo> sources = [
-                plugin.StreamService.GetMediaSourceInfo(StreamType.CatchUp, channelId, start: epg.StartLocalTime, durationMinutes: durationMinutes)
-            ];
-
-            items.Add(new()
-            {
-                ContentType = ChannelMediaContentType.TvExtra,
-                DateCreated = epg.Start,
-                Id = StreamService.ToGuid(StreamService.CatchupStreamPrefix, channel.StreamId, epg.Id, day).ToString(),
-                IsLiveStream = false,
-                MediaSources = sources,
-                MediaType = ChannelMediaType.Video,
-                Name = $"{dateTitle} - {parsedName.Title}",
-                Overview = epg.Description,
-                PremiereDate = epg.Start,
-                RunTimeTicks = durationMinutes * TimeSpan.TicksPerMinute,
-                Tags = new List<string>(parsedName.Tags),
-                Type = ChannelItemType.Media,
-            });
+            items.Add(CreateCatchupItem(plugin, channel, channelId, day, epg.Title, epg.Description, epg.Start, epg.StartLocalTime, epg.End, epg.Id));
         }
 
-        ChannelItemResult result = new()
+        return new ChannelItemResult
         {
             Items = items,
             TotalRecordCount = items.Count
         };
-        return result;
+    }
+
+    private ChannelItemResult BuildStreamItemsFromProgrammes(
+        Plugin plugin,
+        StreamInfo channel,
+        int channelId,
+        int day,
+        IReadOnlyList<XmlTvProgramme> programmes)
+    {
+        if (programmes.Count == 0)
+        {
+            DateTime start = DateTime.UnixEpoch.AddDays(day);
+            return BuildNoEpgFallback(plugin, channelId, day, start);
+        }
+
+        List<ChannelItemInfo> items = [];
+        foreach (XmlTvProgramme programme in programmes)
+        {
+            DateTime startLocal = programme.Start.ToLocalTime();
+            int epgId = Math.Abs(HashCode.Combine(programme.Start.Ticks, programme.Title));
+            items.Add(CreateCatchupItem(
+                plugin,
+                channel,
+                channelId,
+                day,
+                programme.Title,
+                programme.Description,
+                programme.Start,
+                startLocal,
+                programme.End,
+                epgId));
+        }
+
+        return new ChannelItemResult
+        {
+            Items = items,
+            TotalRecordCount = items.Count
+        };
+    }
+
+    private static ChannelItemResult BuildNoEpgFallback(Plugin plugin, int channelId, int day, DateTime start)
+    {
+        int durationMinutes = 24 * 60;
+        return new ChannelItemResult
+        {
+            Items = new List<ChannelItemInfo>()
+            {
+                new()
+                {
+                    ContentType = ChannelMediaContentType.TvExtra,
+                    Id = StreamService.ToGuid(StreamService.CatchupStreamPrefix, channelId, 0, day).ToString(),
+                    IsLiveStream = false,
+                    MediaSources = [
+                        plugin.StreamService.GetMediaSourceInfo(StreamType.CatchUp, channelId, start: start, durationMinutes: durationMinutes)
+                    ],
+                    MediaType = ChannelMediaType.Video,
+                    Name = "No EPG available",
+                    RunTimeTicks = durationMinutes * TimeSpan.TicksPerMinute,
+                    Type = ChannelItemType.Media,
+                }
+            },
+            TotalRecordCount = 1
+        };
+    }
+
+    private static ChannelItemInfo CreateCatchupItem(
+        Plugin plugin,
+        StreamInfo channel,
+        int channelId,
+        int day,
+        string title,
+        string description,
+        DateTime startUtc,
+        DateTime startLocal,
+        DateTime endUtc,
+        int epgId)
+    {
+        ParsedName parsedName = plugin.StreamService.ParseName(title, FilterScope.LiveTvItem);
+        int durationMinutes = (int)Math.Ceiling((endUtc - startUtc).TotalMinutes);
+        string dateTitle = startUtc.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture);
+        return new ChannelItemInfo
+        {
+            ContentType = ChannelMediaContentType.TvExtra,
+            DateCreated = startUtc,
+            Id = StreamService.ToGuid(StreamService.CatchupStreamPrefix, channel.StreamId, epgId, day).ToString(),
+            IsLiveStream = false,
+            MediaSources = [
+                plugin.StreamService.GetMediaSourceInfo(StreamType.CatchUp, channelId, start: startLocal, durationMinutes: durationMinutes)
+            ],
+            MediaType = ChannelMediaType.Video,
+            Name = $"{dateTitle} - {parsedName.Title}",
+            Overview = description,
+            PremiereDate = startUtc,
+            RunTimeTicks = durationMinutes * TimeSpan.TicksPerMinute,
+            Tags = new List<string>(parsedName.Tags),
+            Type = ChannelItemType.Media,
+        };
     }
 
     /// <inheritdoc />

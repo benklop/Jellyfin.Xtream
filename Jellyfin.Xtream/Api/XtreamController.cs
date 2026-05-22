@@ -1,18 +1,5 @@
 // Copyright (C) 2022  Kevin Jilissen
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Mime;
@@ -33,8 +20,48 @@ namespace Jellyfin.Xtream.Api;
 [ApiController]
 [Route("[controller]")]
 [Produces(MediaTypeNames.Application.Json)]
-public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
+public class XtreamController : ControllerBase
 {
+    private readonly IXtreamClient _xtreamClient;
+    private readonly ILogger<XtreamController> _logger;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="XtreamController"/> class.
+    /// </summary>
+    /// <param name="xtreamClient">The Xtream client.</param>
+    /// <param name="logger">The logger.</param>
+    public XtreamController(IXtreamClient xtreamClient, ILogger<XtreamController> logger)
+    {
+        _xtreamClient = xtreamClient;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Log a configuration change.
+    /// </summary>
+    /// <param name="request">The log request.</param>
+    /// <returns>A <see cref="NoContentResult"/> indicating success.</returns>
+    /// <response code="204">Configuration change logged successfully.</response>
+    [HttpPost("LogConfigChange")]
+    [ProducesResponseType(204)]
+    [Authorize(Policy = "RequiresElevation")]
+    public ActionResult LogConfigChange([FromBody] LogConfigChangeRequest request)
+    {
+        _logger.LogInformation(
+            "Xtream plugin configuration changed: {Page} settings updated. RemoteIp: {RemoteIp}",
+            request.Page,
+            HttpContext?.Connection?.RemoteIpAddress);
+
+        // Log the current plugin configuration state
+        var plugin = Plugin.Instance;
+        _logger.LogDebug(
+            "Current plugin configuration state - UseXmlTv: {UseXmlTv}, XmlTvUrl: {XmlTvUrl}",
+            plugin.Configuration.UseXmlTv,
+            plugin.Configuration.XmlTvUrl);
+
+        return NoContent();
+    }
+
     private static CategoryResponse CreateCategoryResponse(Category category) =>
         new()
         {
@@ -79,7 +106,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     public async Task<ActionResult<ProviderTestResponse>> TestProvider(CancellationToken cancellationToken)
     {
         Plugin plugin = Plugin.Instance;
-        PlayerApi info = await xtreamClient.GetUserAndServerInfoAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
+        PlayerApi info = await _xtreamClient.GetUserAndServerInfoAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
         return Ok(new ProviderTestResponse()
         {
             ActiveConnections = info.UserInfo.ActiveCons,
@@ -102,7 +129,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     public async Task<ActionResult<IEnumerable<CategoryResponse>>> GetLiveCategories(CancellationToken cancellationToken)
     {
         Plugin plugin = Plugin.Instance;
-        List<Category> categories = await xtreamClient.GetLiveCategoryAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
+        List<Category> categories = await _xtreamClient.GetLiveCategoryAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
         return Ok(categories.Select(CreateCategoryResponse));
     }
 
@@ -117,7 +144,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     public async Task<ActionResult<IEnumerable<StreamInfo>>> GetLiveStreams(int categoryId, CancellationToken cancellationToken)
     {
         Plugin plugin = Plugin.Instance;
-        List<StreamInfo> streams = await xtreamClient.GetLiveStreamsByCategoryAsync(
+        List<StreamInfo> streams = await _xtreamClient.GetLiveStreamsByCategoryAsync(
           plugin.Creds,
           categoryId,
           cancellationToken).ConfigureAwait(false);
@@ -139,7 +166,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
         }
 
         Plugin plugin = Plugin.Instance;
-        List<Category> categories = await xtreamClient.GetVodCategoryAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
+        List<Category> categories = await _xtreamClient.GetVodCategoryAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
         return Ok(categories.Select(CreateCategoryResponse));
     }
 
@@ -159,7 +186,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
         }
 
         Plugin plugin = Plugin.Instance;
-        List<StreamInfo> streams = await xtreamClient.GetVodStreamsByCategoryAsync(
+        List<StreamInfo> streams = await _xtreamClient.GetVodStreamsByCategoryAsync(
           plugin.Creds,
           categoryId,
           cancellationToken).ConfigureAwait(false);
@@ -181,7 +208,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
         }
 
         Plugin plugin = Plugin.Instance;
-        List<Category> categories = await xtreamClient.GetSeriesCategoryAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
+        List<Category> categories = await _xtreamClient.GetSeriesCategoryAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
         return Ok(categories.Select(CreateCategoryResponse));
     }
 
@@ -201,7 +228,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
         }
 
         Plugin plugin = Plugin.Instance;
-        List<Series> series = await xtreamClient.GetSeriesByCategoryAsync(
+        List<Series> series = await _xtreamClient.GetSeriesByCategoryAsync(
           plugin.Creds,
           categoryId,
           cancellationToken).ConfigureAwait(false);
@@ -243,7 +270,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
 #pragma warning restore CA3012 // Review code for regex injection vulnerabilities
 
             // Sample Live TV categories (max 5)
-            var liveTvCategories = await xtreamClient.GetLiveCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
+            var liveTvCategories = await _xtreamClient.GetLiveCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
             foreach (var category in liveTvCategories.Take(5))
             {
                 var after = regex.Replace(category.CategoryName, request.Replacement);
@@ -258,7 +285,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
             // Sample Live TV items from first category (max 5)
             if (liveTvCategories.Count > 0)
             {
-                var liveStreams = await xtreamClient.GetLiveStreamsByCategoryAsync(Plugin.Instance.Creds, liveTvCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
+                var liveStreams = await _xtreamClient.GetLiveStreamsByCategoryAsync(Plugin.Instance.Creds, liveTvCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
                 foreach (var stream in liveStreams.Take(5))
                 {
                     var after = regex.Replace(stream.Name, request.Replacement);
@@ -274,7 +301,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
             if (Plugin.Instance.Configuration.IsVodVisible)
             {
                 // Sample VOD categories (max 5)
-                var vodCategories = await xtreamClient.GetVodCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
+                var vodCategories = await _xtreamClient.GetVodCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
                 foreach (var category in vodCategories.Take(5))
                 {
                     var after = regex.Replace(category.CategoryName, request.Replacement);
@@ -289,7 +316,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
                 // Sample VOD items from first category (max 5)
                 if (vodCategories.Count > 0)
                 {
-                    var vodStreams = await xtreamClient.GetVodStreamsByCategoryAsync(Plugin.Instance.Creds, vodCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
+                    var vodStreams = await _xtreamClient.GetVodStreamsByCategoryAsync(Plugin.Instance.Creds, vodCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
                     foreach (var stream in vodStreams.Take(5))
                     {
                         var after = regex.Replace(stream.Name, request.Replacement);
@@ -306,7 +333,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
             if (Plugin.Instance.Configuration.IsSeriesVisible)
             {
                 // Sample Series categories (max 5)
-                var seriesCategories = await xtreamClient.GetSeriesCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
+                var seriesCategories = await _xtreamClient.GetSeriesCategoryAsync(Plugin.Instance.Creds, cancellationToken).ConfigureAwait(false);
                 foreach (var category in seriesCategories.Take(5))
                 {
                     var after = regex.Replace(category.CategoryName, request.Replacement);
@@ -321,7 +348,7 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
                 // Sample Series items from first category (max 5)
                 if (seriesCategories.Count > 0)
                 {
-                    var series = await xtreamClient.GetSeriesByCategoryAsync(Plugin.Instance.Creds, seriesCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
+                    var series = await _xtreamClient.GetSeriesByCategoryAsync(Plugin.Instance.Creds, seriesCategories[0].CategoryId, cancellationToken).ConfigureAwait(false);
                     foreach (var s in series.Take(5))
                     {
                         var after = regex.Replace(s.Name, request.Replacement);

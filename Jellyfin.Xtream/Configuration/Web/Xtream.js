@@ -184,6 +184,15 @@ const fetchJson = (url) => ApiClient.fetch({
   url: ApiClient.getUrl(url),
 });
 
+const logConfigurationChange = (pageName) => {
+  ApiClient.fetch({
+    type: 'POST',
+    url: ApiClient.getUrl('Xtream/LogConfigChange'),
+    data: JSON.stringify({ page: pageName }),
+    contentType: 'application/json'
+  });
+};
+
 const filter = (obj, predicate) => Object.keys(obj)
   .filter(key => predicate(obj[key]))
   .reduce((res, key) => (res[key] = obj[key], res), {});
@@ -213,21 +222,52 @@ const tabs = [
     href: tab('XtreamSeries'),
     name: 'Series',
   },
+  {
+    href: tab('XtreamXmlTv'),
+    name: 'XMLTV',
+  },
 ];
 
 const setTabs = (index) => {
   const name = tabs[index].name;
   LibraryMenu.setTabs(name, index, () => tabs);
-}
+};
+
+const renderTabLinks = (container, pageBaseName) => {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = '';
+  tabs.forEach((t) => {
+    const linkPage = t.href.split('name=')[1];
+    const baseName = linkPage.replace('.html', '');
+    const a = document.createElement('a');
+    a.href = t.href;
+    a.textContent = t.name;
+    if (baseName === pageBaseName) {
+      a.classList.add('selected');
+    }
+
+    container.appendChild(a);
+  });
+};
 
 const pluginConfig = {
   UniqueId: '5d774c35-8567-46d3-a950-9bb8227a0c5d'
 };
 
-export default {
+const Xtream = {
   fetchJson,
   filter,
   pluginConfig,
   populateCategoriesTable,
   setTabs,
-}
+  renderTabLinks,
+  logConfigurationChange,
+};
+
+// Expose to global scope for traditional script loading
+window.Xtream = Xtream;
+
+export default Xtream;

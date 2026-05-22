@@ -35,6 +35,7 @@ namespace Jellyfin.Xtream;
 public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     private static Plugin? _instance;
+    private readonly ILogger<Plugin> _logger;
     private readonly ConnectionPool _connectionPool;
 
     /// <summary>
@@ -65,6 +66,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             client.UpdateUserAgent();
         }
 
+        _logger = logger;
         StreamService = new(xtreamClient, nameFilterService);
         TaskService = new(taskManager);
 
@@ -90,7 +92,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <summary>
     /// Gets the data version used to trigger a cache invalidation on plugin update or config change.
     /// </summary>
-    public string DataVersion => Assembly.GetCallingAssembly().GetName().Version?.ToString() + Configuration.GetHashCode();
+    public string DataVersion => typeof(Plugin).Assembly.GetName().Version?.ToString() + Configuration.GetHashCode();
 
     /// <summary>
     /// Gets the current plugin instance.
@@ -138,12 +140,22 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             CreateStatic("XtreamSeries.js"),
             CreateStatic("XtreamVod.html"),
             CreateStatic("XtreamVod.js"),
+            CreateStatic("XtreamXmlTv.html"),
+            CreateStatic("XtreamXmlTv.js"),
         };
     }
 
     /// <inheritdoc />
     public override void UpdateConfiguration(BasePluginConfiguration configuration)
     {
+        if (configuration is PluginConfiguration xtreamConfig)
+        {
+            _logger.LogInformation(
+                "Updating Xtream plugin configuration - UseXmlTv: {UseXmlTv}, XmlTvUrl: {XmlTvUrl}",
+                xtreamConfig.UseXmlTv,
+                xtreamConfig.XmlTvUrl);
+        }
+
         base.UpdateConfiguration(configuration);
 
         if (XtreamClient is XtreamClient client)
