@@ -31,9 +31,10 @@ public interface IXtreamClient
     /// </summary>
     /// <param name="connectionInfo">Connection information for the provider.</param>
     /// <param name="xmlTvUrl">Optional XMLTV URL override from configuration.</param>
+    /// <param name="historicalDays">Historical days for timeshift URL; when null the client auto-detects.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Raw XMLTV content as a string.</returns>
-    Task<string> GetXmlTvAsync(ConnectionInfo connectionInfo, string? xmlTvUrl, CancellationToken cancellationToken);
+    Task<string> GetXmlTvAsync(ConnectionInfo connectionInfo, string? xmlTvUrl, int? historicalDays, CancellationToken cancellationToken);
 
     Task<List<Category>> GetLiveCategoryAsync(ConnectionInfo connectionInfo, CancellationToken cancellationToken);
 

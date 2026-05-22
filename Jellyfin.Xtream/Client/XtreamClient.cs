@@ -175,20 +175,20 @@ public class XtreamClient(HttpClient client, ILogger<XtreamClient> logger) : IDi
            $"/player_api.php?username={connectionInfo.UserName}&password={connectionInfo.Password}&action=get_simple_data_table&stream_id={streamId}",
            cancellationToken);
 
-    public async Task<string> GetXmlTvAsync(ConnectionInfo connectionInfo, string? xmlTvUrl, CancellationToken cancellationToken)
+    public async Task<string> GetXmlTvAsync(ConnectionInfo connectionInfo, string? xmlTvUrl, int? historicalDays, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(connectionInfo);
 
         Plugin plugin = Plugin.Instance;
-        int historicalDays = plugin.Configuration.XmlTvHistoricalDays;
+        int days = historicalDays ?? plugin.Configuration.XmlTvHistoricalDays;
 
         // Auto-detect historical days if not configured
-        if (historicalDays <= 0)
+        if (days <= 0)
         {
             try
             {
                 List<StreamInfo> streams = await GetLiveStreamsAsync(connectionInfo, cancellationToken).ConfigureAwait(false);
-                historicalDays = streams
+                days = streams
                     .Where(s => s.TvArchive)
                     .Select(s => s.TvArchiveDuration)
                     .DefaultIfEmpty(7)
@@ -197,7 +197,7 @@ public class XtreamClient(HttpClient client, ILogger<XtreamClient> logger) : IDi
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Failed to auto-detect historical days, defaulting to 7");
-                historicalDays = 7;
+                days = 7;
             }
         }
 
@@ -219,7 +219,7 @@ public class XtreamClient(HttpClient client, ILogger<XtreamClient> logger) : IDi
         // Add timeshift parameters if supported
         if (plugin.Configuration.XmlTvSupportsTimeshift)
         {
-            string fromDate = DateTime.UtcNow.AddDays(-historicalDays).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            string fromDate = DateTime.UtcNow.AddDays(-days).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
             string toDate = DateTime.UtcNow.AddDays(2).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
             char separator = urlPath.Contains('?', StringComparison.Ordinal) ? '&' : '?';
             urlPath += $"{separator}timeshift=1&from={fromDate}&to={toDate}";
@@ -231,7 +231,7 @@ public class XtreamClient(HttpClient client, ILogger<XtreamClient> logger) : IDi
         logger.LogInformation(
             "Fetching XMLTV from {Url} (historicalDays: {Days}, timeshift: {Timeshift})",
             sanitizedUrl,
-            historicalDays,
+            days,
             plugin.Configuration.XmlTvSupportsTimeshift);
 
         try
