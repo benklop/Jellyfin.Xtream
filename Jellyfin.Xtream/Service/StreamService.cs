@@ -100,7 +100,9 @@ public partial class StreamService(IXtreamClient xtreamClient, NameFilterService
     /// <list>
     /// <item>[TAG]</item>
     /// <item>|TAG|</item>
+    /// <item>| TAG | (with spaces, e.g., | NL |)</item>
     /// </list>
+    /// Supports Unicode pipe variants (│, ┃, ｜) in addition to ASCII pipe.
     /// These tags are parsed and returned as separate strings.
     /// The returned title is cleaned from tags and trimmed.
     /// Name filters from configuration are applied before tag parsing.
@@ -481,6 +483,8 @@ public partial class StreamService(IXtreamClient xtreamClient, NameFilterService
         };
     }
 
-    [GeneratedRegex(@"\[([^\]]+)\]|\|([^\|]+)\|")]
+    // Matches tags in brackets [TAG] or pipe-delimited |TAG| (with optional spaces and Unicode pipe variants)
+    // Pipe variants: | (U+007C), │ (U+2502), ┃ (U+2503), ｜ (U+FF5C)
+    [GeneratedRegex(@"\[([^\]]+)\]|[|│┃｜]\s*([^|│┃｜]+?)\s*[|│┃｜]")]
     private static partial Regex TagRegex();
 }
