@@ -7,6 +7,7 @@ export default function (view) {
     ).then((module) => module.default);
 
     Xtream.setTabs(3);
+    Xtream.renderTabLinks(view.querySelector('.tabLinks'), 'XtreamNameFilters');
 
     const pluginId = Xtream.pluginConfig.UniqueId;
     const filtersList = view.querySelector('#NameFiltersList');
@@ -263,6 +264,7 @@ export default function (view) {
           currentConfig.NameFilters = filters;
 
           const result = await ApiClient.updatePluginConfiguration(pluginId, currentConfig);
+          Xtream.logConfigurationChange('Name Filters');
           Dashboard.hideLoadingMsg();
           Dashboard.processPluginConfigurationUpdateResult(result);
         } catch (error) {

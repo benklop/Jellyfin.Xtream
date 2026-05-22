@@ -33,6 +33,7 @@ export default function (view) {
   ).then((Xtream) => Xtream.default
   ).then((Xtream) => {
     Xtream.setTabs(5);
+    Xtream.renderTabLinks(view.querySelector('.tabLinks'), 'XtreamSeries');
 
     // Only populate if not already populated
     const populatePromise = isPopulated ? Promise.resolve(currentData) : populate(Xtream);
@@ -62,6 +63,7 @@ export default function (view) {
             config.CollapseSeriesCategories = collapseCategories.checked;
             config.Series = currentData;
             ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
+              Xtream.logConfigurationChange('Series');
               Dashboard.processPluginConfigurationUpdateResult(result);
             });
           });

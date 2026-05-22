@@ -9,6 +9,7 @@ export default function (view) {
   ).then((Xtream) => {
     const pluginId = Xtream.pluginConfig.UniqueId;
     Xtream.setTabs(0);
+    Xtream.renderTabLinks(view.querySelector('.tabLinks'), 'XtreamCredentials');
 
     const renderAdditionalCredentials = (credentials) => {
       const container = view.querySelector('#AdditionalCredentialsList');

@@ -31,6 +31,7 @@ export default function (view) {
   ).then((Xtream) => Xtream.default
   ).then((Xtream) => {
     Xtream.setTabs(4);
+    Xtream.renderTabLinks(view.querySelector('.tabLinks'), 'XtreamVod');
 
     // Only populate if not already populated
     const populatePromise = isPopulated ? Promise.resolve(currentData) : populate(Xtream);
@@ -60,6 +61,7 @@ export default function (view) {
             config.CollapseVodCategories = collapseCategories.checked;
             config.Vod = currentData;
             ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
+              Xtream.logConfigurationChange('VOD');
               Dashboard.processPluginConfigurationUpdateResult(result);
             });
           });
