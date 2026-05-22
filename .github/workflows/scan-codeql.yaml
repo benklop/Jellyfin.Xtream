@@ -1,0 +1,13 @@
+name: "🔬 Run CodeQL"
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  call:
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/scan-codeql.yaml@master
+    with:
+      dotnet-version: "9.0.*"
+      repository-name: Kevinjil/Jellyfin.Xtream

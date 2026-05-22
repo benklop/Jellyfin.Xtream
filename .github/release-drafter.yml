@@ -1,0 +1,94 @@
+# https://github.com/release-drafter/release-drafter
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+category-template: '### $TITLE'
+
+categories:
+  - title: ':boom: Breaking changes'
+    labels:
+      - breaking
+      - 'semver: major'
+  - title: ':tada: New features and improvements'
+    labels:
+      - enhancement
+      - feature
+      - 'semver: minor'
+  - title: ':bug: Bug Fixes'
+    labels:
+      - bug
+      - fix
+      - bugfix
+      - regression
+      - 'semver: patch'
+  - title: ':white_check_mark: Tests'
+    labels:
+      - test
+      - tests
+  - title: ':gear: Code or Repo Maintenance'
+    labels:
+      - chore
+      - cleanup
+      - ci
+      - build
+  - title: ':memo: Documentation updates'
+    labels:
+      - documentation
+  - title: ':arrow_up: Dependency updates'
+    labels:
+      - dependencies
+      - dependency
+
+exclude-labels:
+  - no-changelog
+  - skip-changelog
+  - invalid
+  - release-prep
+
+change-template: '- $TITLE (@$AUTHOR) (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
+version-resolver:
+  major:
+    labels:
+      - 'semver: major'
+      - breaking
+  minor:
+    labels:
+      - 'semver: minor'
+      - enhancement
+      - feature
+  patch:
+    labels:
+      - 'semver: patch'
+      - bug
+      - fix
+      - bugfix
+      - chore
+  default: patch
+
+autolabeler:
+  - label: ci
+    files:
+      - '.github/workflows/*'
+      - '.github/dependabot.yml'
+  - label: documentation
+    files:
+      - '*.md'
+  - label: bug
+    branch:
+      - '/fix\/.+/'
+    title:
+      - '/fix/i'
+  - label: chore
+    branch:
+      - '/chore\/.+/'
+    title:
+      - '/chore/i'
+  - label: feature
+    branch:
+      - '/feature\/.+/'
+
+template: |
+  ## Changes in $RESOLVED_VERSION
+
+  $CHANGES

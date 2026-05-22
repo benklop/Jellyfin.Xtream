@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tv SYSTEM "xmltv.dtd">
+<tv>
+  <channel id="epg-1">
+    <display-name>News One</display-name>
+    <tvg-id>epg-1</tvg-id>
+  </channel>
+  <channel id="42">
+    <display-name>Other Channel</display-name>
+  </channel>
+  <programme start="20240101080000 +0000" stop="20240101090000 +0000" channel="epg-1">
+    <title>Morning News</title>
+    <desc>Latest headlines</desc>
+  </programme>
+  <programme start="20240101120000 +0000" stop="20240101130000 +0000" channel="42">
+    <title>Afternoon Show</title>
+    <desc>Entertainment</desc>
+  </programme>
+</tv>
