@@ -1,13 +1,13 @@
-# Jellyfin.Xtream (benklop fork)
+# Jellyfin.Xtream (klopstack fork)
 
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/benklop/Jellyfin.Xtream/total)
-![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/benklop/Jellyfin.Xtream/latest/total)
-![Dynamic YAML Badge](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbenklop%2FJellyfin.Xtream%2Frefs%2Fheads%2Fmaster%2Fbuild.yaml&query=targetAbi&label=Jellyfin%20ABI)
-![Dynamic YAML Badge](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbenklop%2FJellyfin.Xtream%2Frefs%2Fheads%2Fmaster%2Fbuild.yaml&query=framework&label=.NET%20framework)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/klopstack/Jellyfin.Xtream/total)
+![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/klopstack/Jellyfin.Xtream/latest/total)
+![Dynamic YAML Badge](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fklopstack%2FJellyfin.Xtream%2Frefs%2Fheads%2Fmaster%2Fbuild.yaml&query=targetAbi&label=Jellyfin%20ABI)
+![Dynamic YAML Badge](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fklopstack%2FJellyfin.Xtream%2Frefs%2Fheads%2Fmaster%2Fbuild.yaml&query=framework&label=.NET%20framework)
 
 The Jellyfin.Xtream plugin integrates content from an [Xtream-compatible API](https://xtream-ui.org/api-xtreamui-xtreamcode/) into [Jellyfin](https://jellyfin.org/).
 
-This repository is an **independent fork** maintained by [benklop](https://github.com/benklop). Upstream lives at [Kevinjil/Jellyfin.Xtream](https://github.com/Kevinjil/Jellyfin.Xtream). Releases and the plugin catalog URL point at this fork so you can install builds with fork-specific changes (for example XMLTV EPG support) without waiting on upstream.
+This repository is an **independent fork** maintained by the [klopstack](https://github.com/klopstack) organization. Upstream lives at [Kevinjil/Jellyfin.Xtream](https://github.com/Kevinjil/Jellyfin.Xtream). Releases and the plugin catalog URL point at this fork so you can install builds with fork-specific changes (for example XMLTV EPG support) without waiting on upstream.
 
 ## Installation
 
@@ -15,16 +15,16 @@ This repository is an **independent fork** maintained by [benklop](https://githu
 
 1. Open the admin dashboard and go to **Plugins** → **Repositories**.
 2. Click **+** and add a repository:
-   - **Name:** `Jellyfin.Xtream (benklop)`
-   - **URL:** `https://benklop.github.io/Jellyfin.Xtream/repository.json`
+   - **Name:** `Jellyfin.Xtream (klopstack)`
+   - **URL:** `https://klopstack.github.io/Jellyfin.Xtream/repository.json`
 3. Save, then open **Plugins** → **Catalog** → **Live TV** → **Jellyfin Xtream**.
 4. Install the desired version and **restart Jellyfin**.
 
-> **Note:** Enable [GitHub Pages](https://github.com/benklop/Jellyfin.Xtream/settings/pages) on this repo (GitHub Actions source) before the catalog URL works. It is populated automatically when you publish a [GitHub Release](https://github.com/benklop/Jellyfin.Xtream/releases).
+> **Note:** Enable [GitHub Pages](https://github.com/klopstack/Jellyfin.Xtream/settings/pages) on this repo (GitHub Actions source) before the catalog URL works. It is populated automatically when you publish a [GitHub Release](https://github.com/klopstack/Jellyfin.Xtream/releases).
 
 ### Manual install from a release
 
-1. Download the `.zip` from [Releases](https://github.com/benklop/Jellyfin.Xtream/releases).
+1. Download the `.zip` from [Releases](https://github.com/klopstack/Jellyfin.Xtream/releases).
 2. Extract into your Jellyfin plugins folder, for example:
    - Linux: `/var/lib/jellyfin/plugins/Jellyfin.Xtream/`
    - Docker: `/config/plugins/Jellyfin.Xtream/`
@@ -33,7 +33,7 @@ This repository is an **independent fork** maintained by [benklop](https://githu
 ### Build from source
 
 ```bash
-git clone https://github.com/benklop/Jellyfin.Xtream.git
+git clone https://github.com/klopstack/Jellyfin.Xtream.git
 cd Jellyfin.Xtream
 dotnet publish --configuration=Release Jellyfin.Xtream.sln
 ```
