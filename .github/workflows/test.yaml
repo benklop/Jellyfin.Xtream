@@ -14,7 +14,58 @@ on:
   workflow_dispatch:
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/test.yaml@master
-    with:    
-      dotnet-version: 9.0.x
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore Jellyfin.Xtream.sln
+
+      - name: Install dotnet-format
+        run: |
+          dotnet tool install -g dotnet-format
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Lint (dotnet-format)
+        run: dotnet format Jellyfin.Xtream.sln --verify-no-changes
+
+      - name: Build (Release)
+        run: dotnet build Jellyfin.Xtream.sln --configuration Release --no-restore
+
+      - name: Extract Coverage Threshold
+        id: threshold
+        run: |
+          THRESHOLD=$(grep -oP '<CoverageThreshold>\K[0-9]+' Jellyfin.Xtream.Tests/Jellyfin.Xtream.Tests.csproj)
+          echo "threshold=$THRESHOLD" >> $GITHUB_OUTPUT
+          echo "Coverage threshold from .csproj: ${THRESHOLD}%"
+
+      - name: Test with Coverage (Coverlet)
+        run: |
+          dotnet test Jellyfin.Xtream.Tests/Jellyfin.Xtream.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            /p:CollectCoverage=true \
+            /p:CoverletOutput=../TestResults/coverage.info \
+            /p:CoverletOutputFormat=lcov
+
+      - name: Upload Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: TestResults/coverage.info
+          if-no-files-found: error
+
+      - name: Verify Coverage Meets Threshold
+        run: |
+          THRESHOLD=${{ steps.threshold.outputs.threshold }}
+          percent=$(awk -F, '/^DA:/{total++; if($2>0) covered++} END{printf "%.2f", (covered/total)*100}' TestResults/coverage.info)
+          echo "Line coverage: ${percent}%"
+          echo "Required threshold: ${THRESHOLD}%"
+          awk -v p="$percent" -v t="$THRESHOLD" 'BEGIN{exit p<t}'

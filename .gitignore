@@ -4,5 +4,6 @@ obj/
 .idea/
 .vscode/
 artifacts
+TestResults/
 *.dll
 Jellyfin.Xtream.dll

@@ -53,8 +53,8 @@ public class UserInfo
     [JsonProperty("max_connections")]
     public int MaxConnections { get; set; }
 
-    #pragma warning disable CA2227
+#pragma warning disable CA2227
     [JsonProperty("allowed_output_formats")]
     public ICollection<string> AllowedOutputFormats { get; set; } = new List<string>();
-    #pragma warning restore CA2227
+#pragma warning restore CA2227
 }
